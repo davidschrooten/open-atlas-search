@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/david/open-atlas-search/cmd"
+	"github.com/davidschrooten/open-atlas-search/cmd"
 )
 
 func main() {

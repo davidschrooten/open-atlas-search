@@ -7,7 +7,7 @@ import (
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/search"
 
-	"github.com/david/open-atlas-search/config"
+	"github.com/davidschrooten/open-atlas-search/config"
 )
 
 func TestNewEngine(t *testing.T) {
@@ -89,7 +89,7 @@ func TestEngine_ConvertSearchResult(t *testing.T) {
 				ID:    "doc1",
 				Score: 1.5,
 				Fields: map[string]interface{}{
-					"title": "Test Document",
+					"title":   "Test Document",
 					"content": "This is a test",
 				},
 				Fragments: map[string][]string{

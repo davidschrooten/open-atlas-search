@@ -9,9 +9,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/david/open-atlas-search/config"
-	"github.com/david/open-atlas-search/internal/indexer"
-	"github.com/david/open-atlas-search/internal/search"
+	"github.com/davidschrooten/open-atlas-search/config"
+	"github.com/davidschrooten/open-atlas-search/internal/indexer"
+	"github.com/davidschrooten/open-atlas-search/internal/search"
 )
 
 // ErrorResponse represents a structured API error response
@@ -76,10 +76,10 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var searchReq struct {
-		Query  map[string]interface{}        `json:"query"`
+		Query  map[string]interface{}         `json:"query"`
 		Facets map[string]search.FacetRequest `json:"facets"`
-		Size   int                          `json:"size"`
-		From   int                          `json:"from"`
+		Size   int                            `json:"size"`
+		From   int                            `json:"from"`
 	}
 
 	// Parse the request body
@@ -227,7 +227,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Always return healthy for basic health check
 	s.successResponse(w, map[string]interface{}{
-		"status": "healthy",
+		"status":  "healthy",
 		"service": "open-atlas-search",
 	})
 }
@@ -273,9 +273,9 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	checks["indexes"] = "ok"
 
 	s.successResponse(w, map[string]interface{}{
-		"status": "ready",
-		"service": "open-atlas-search", 
-		"checks": checks,
+		"status":  "ready",
+		"service": "open-atlas-search",
+		"checks":  checks,
 	})
 }
 
@@ -363,12 +363,12 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		
+
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		
+
 		next.ServeHTTP(w, r)
 	})
 }

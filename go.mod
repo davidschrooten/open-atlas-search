@@ -1,4 +1,4 @@
-module github.com/david/open-atlas-search
+module github.com/davidschrooten/open-atlas-search
 
 go 1.21
 

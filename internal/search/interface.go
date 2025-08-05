@@ -3,7 +3,7 @@ package search
 import (
 	"time"
 
-	"github.com/david/open-atlas-search/config"
+	"github.com/davidschrooten/open-atlas-search/config"
 )
 
 // SearchEngine defines the interface for search engine operations

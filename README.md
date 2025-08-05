@@ -49,7 +49,7 @@ The API has been designed to closely match MongoDB Atlas Search. Below are the m
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/david/open-atlas-search.git
+git clone https://github.com/davidschrooten/open-atlas-search.git
 cd open-atlas-search
 ```
 
@@ -206,7 +206,7 @@ Request facets alongside search results:
       "size": 5
     },
     "categories": {
-      "type": "terms", 
+      "type": "terms",
       "field": "category",
       "size": 10
     }
@@ -365,7 +365,7 @@ The status endpoint provides detailed information about synchronization across a
   "status": "running",
   "indexes": [
     {
-      "name": "products", 
+      "name": "products",
       "docCount": 1500,
       "status": "active",
       "lastSync": "2025-07-31T18:57:24Z"

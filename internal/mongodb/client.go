@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/david/open-atlas-search/config"
+	"github.com/davidschrooten/open-atlas-search/config"
 )
 
 // Client wraps MongoDB client with additional functionality
@@ -26,7 +26,7 @@ func NewClient(cfg config.MongoDBConfig) (*Client, error) {
 	defer cancel()
 
 	clientOptions := options.Client().ApplyURI(cfg.GetMongoURI())
-	
+
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
@@ -70,9 +70,9 @@ func (c *Client) FindDocuments(collection string, filter bson.M, limit int64) (*
 	if limit > 0 {
 		opts.SetLimit(limit)
 	}
-	
+
 	// Optimize cursor for bulk operations
-	opts.SetBatchSize(1000) // Fetch more documents per round trip
+	opts.SetBatchSize(1000)       // Fetch more documents per round trip
 	opts.SetNoCursorTimeout(true) // Prevent cursor timeout for large datasets
 
 	cursor, err := c.Collection(collection).Find(ctx, filter, opts)
@@ -106,7 +106,7 @@ func (c *Client) FindDocumentsSince(collection, timestampField string, since tim
 	if limit > 0 {
 		opts.SetLimit(limit)
 	}
-	
+
 	// Optimize cursor for incremental sync operations
 	opts.SetBatchSize(500) // Smaller batch size for incremental updates
 	opts.SetNoCursorTimeout(true)
@@ -150,7 +150,7 @@ func (c *Client) GetLastDocumentTimestamp(collection, timestampField string) (ti
 	} else {
 		// Use custom timestamp field
 		if timestamp, ok := result[timestampField]; ok {
-		return c.ParseTimestamp(timestamp)
+			return c.ParseTimestamp(timestamp)
 		}
 		return time.Time{}, fmt.Errorf("timestamp field %s not found in document", timestampField)
 	}
@@ -246,7 +246,7 @@ func (c *Client) GetCollectionStats(collection string) (bson.M, error) {
 	err := c.Database().RunCommand(ctx, bson.D{
 		{Key: "collStats", Value: collection},
 	}).Decode(&result)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get collection stats: %w", err)
 	}

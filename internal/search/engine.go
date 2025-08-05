@@ -12,7 +12,7 @@ import (
 	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search/query"
 
-	"github.com/david/open-atlas-search/config"
+	"github.com/davidschrooten/open-atlas-search/config"
 )
 
 // Engine manages multiple Bleve indexes
@@ -21,23 +21,23 @@ type Engine struct {
 	indexPath string
 	mutex     sync.RWMutex
 	lastSync  map[string]time.Time // Track last sync time for each index
-	syncMutex sync.RWMutex        // Separate mutex for sync times
+	syncMutex sync.RWMutex         // Separate mutex for sync times
 }
 
 // SearchResult represents search results with Atlas Search compatibility
 type SearchResult struct {
-	Hits    []SearchHit            `json:"hits"`
-	Total   int                    `json:"total"`
-	Facets  map[string]interface{} `json:"facets,omitempty"`
-	MaxScore float64               `json:"maxScore"`
+	Hits     []SearchHit            `json:"hits"`
+	Total    int                    `json:"total"`
+	Facets   map[string]interface{} `json:"facets,omitempty"`
+	MaxScore float64                `json:"maxScore"`
 }
 
 // SearchHit represents a single search result
 type SearchHit struct {
-	ID       string                 `json:"_id"`
-	Score    float64                `json:"score"`
-	Source   map[string]interface{} `json:"source"`
-	Highlight map[string][]string   `json:"highlight,omitempty"`
+	ID        string                 `json:"_id"`
+	Score     float64                `json:"score"`
+	Source    map[string]interface{} `json:"source"`
+	Highlight map[string][]string    `json:"highlight,omitempty"`
 }
 
 // FacetRequest represents a facet aggregation request
@@ -49,12 +49,12 @@ type FacetRequest struct {
 
 // SearchRequest represents a search query request
 type SearchRequest struct {
-	Index     string                    `json:"index"`
-	Query     map[string]interface{}    `json:"query"`
-	Highlight map[string]interface{}    `json:"highlight,omitempty"`
-	Facets    map[string]FacetRequest   `json:"facets,omitempty"`
-	Size      int                       `json:"size"`
-	From      int                       `json:"from"`
+	Index     string                  `json:"index"`
+	Query     map[string]interface{}  `json:"query"`
+	Highlight map[string]interface{}  `json:"highlight,omitempty"`
+	Facets    map[string]FacetRequest `json:"facets,omitempty"`
+	Size      int                     `json:"size"`
+	From      int                     `json:"from"`
 }
 
 // NewEngine creates a new search engine
@@ -104,7 +104,7 @@ func (e *Engine) CreateIndex(indexCfg config.IndexConfig) error {
 func (e *Engine) GetIndex(indexName string) (bleve.Index, bool) {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	
+
 	index, exists := e.indexes[indexName]
 	return index, exists
 }
@@ -122,34 +122,35 @@ type IndexInfo struct {
 func (e *Engine) ListIndexes() ([]IndexInfo, error) {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	
+
 	indexes := make([]IndexInfo, 0, len(e.indexes))
-	
+
 	for name, index := range e.indexes {
 		docCount, err := index.DocCount()
 		if err != nil {
 			// If we can't get doc count, set it to 0 and continue
 			docCount = 0
 		}
-		
+
 		indexInfo := IndexInfo{
 			Name:     name,
 			DocCount: docCount,
 			Status:   "active",
 		}
-		
+
 		// Get last sync time if available
 		e.syncMutex.RLock()
 		if lastSync, exists := e.lastSync[name]; exists {
 			indexInfo.LastSync = &lastSync
 		}
 		e.syncMutex.RUnlock()
-		
+
 		indexes = append(indexes, indexInfo)
 	}
-	
+
 	return indexes, nil
 }
+
 // RemoveIndex removes an index from memory and disk
 func (e *Engine) RemoveIndex(indexName string) error {
 	e.mutex.Lock()
@@ -467,7 +468,7 @@ func (e *Engine) convertCompoundQuery(compound map[string]interface{}) (query.Qu
 // convertTextQuery converts text search queries
 func (e *Engine) convertTextQuery(textQuery map[string]interface{}) (query.Query, error) {
 	queryText := textQuery["query"].(string)
-	
+
 	if path, ok := textQuery["path"]; ok {
 		field := path.(string)
 		matchQuery := bleve.NewMatchQuery(queryText)
@@ -482,7 +483,7 @@ func (e *Engine) convertTextQuery(textQuery map[string]interface{}) (query.Query
 func (e *Engine) convertTermQuery(termQuery map[string]interface{}) (query.Query, error) {
 	value := termQuery["value"].(string)
 	path := termQuery["path"].(string)
-	
+
 	termQueryObj := bleve.NewTermQuery(value)
 	termQueryObj.SetField(path)
 	return termQueryObj, nil
@@ -492,7 +493,7 @@ func (e *Engine) convertTermQuery(termQuery map[string]interface{}) (query.Query
 func (e *Engine) convertWildcardQuery(wildcardQuery map[string]interface{}) (query.Query, error) {
 	value := wildcardQuery["value"].(string)
 	path := wildcardQuery["path"].(string)
-	
+
 	wildcardQueryObj := bleve.NewWildcardQuery(value)
 	wildcardQueryObj.SetField(path)
 	return wildcardQueryObj, nil
@@ -531,7 +532,7 @@ func (e *Engine) addFacets(searchReq *bleve.SearchRequest, facets map[string]Fac
 // convertSearchResult converts Bleve search result to our format
 func (e *Engine) convertSearchResult(result *bleve.SearchResult) *SearchResult {
 	hits := make([]SearchHit, len(result.Hits))
-	
+
 	for i, hit := range result.Hits {
 		// Convert fields to source document
 		source := make(map[string]interface{})
@@ -562,7 +563,7 @@ func (e *Engine) convertSearchResult(result *bleve.SearchResult) *SearchResult {
 		searchResult.Facets = make(map[string]interface{})
 		for name, facet := range result.Facets {
 			buckets := make([]map[string]interface{}, 0)
-			
+
 			if facet.Terms != nil {
 				for _, term := range facet.Terms.Terms() {
 					buckets = append(buckets, map[string]interface{}{
@@ -571,11 +572,11 @@ func (e *Engine) convertSearchResult(result *bleve.SearchResult) *SearchResult {
 					})
 				}
 			}
-			
+
 			facetData := map[string]interface{}{
 				"buckets": buckets,
 			}
-			
+
 			searchResult.Facets[name] = facetData
 		}
 	}
@@ -604,9 +605,9 @@ func (e *Engine) GetIndexMapping(indexName string) (map[string]interface{}, erro
 	// For a more complete implementation, you'd need to store the original config
 	// or parse the bleve mapping structure more carefully
 	result := map[string]interface{}{
-		"name": indexName,
-		"type": "bleve",
-		"status": "active",
+		"name":    indexName,
+		"type":    "bleve",
+		"status":  "active",
 		"message": "Mapping details available through Bleve index introspection",
 	}
 

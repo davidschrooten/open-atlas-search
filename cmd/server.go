@@ -13,11 +13,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/david/open-atlas-search/config"
-	"github.com/david/open-atlas-search/internal/api"
-	"github.com/david/open-atlas-search/internal/indexer"
-	"github.com/david/open-atlas-search/internal/mongodb"
-	"github.com/david/open-atlas-search/internal/search"
+	"github.com/davidschrooten/open-atlas-search/config"
+	"github.com/davidschrooten/open-atlas-search/internal/api"
+	"github.com/davidschrooten/open-atlas-search/internal/indexer"
+	"github.com/davidschrooten/open-atlas-search/internal/mongodb"
+	"github.com/davidschrooten/open-atlas-search/internal/search"
 )
 
 // serverCmd represents the server command
@@ -31,11 +31,11 @@ The server will automatically create and maintain search indexes based on the co
 
 func init() {
 	rootCmd.AddCommand(serverCmd)
-	
+
 	// Server-specific flags
 	serverCmd.Flags().String("host", "0.0.0.0", "Host to bind the server to")
 	serverCmd.Flags().Int("port", 8080, "Port to bind the server to")
-	
+
 	// Bind flags to viper
 	viper.BindPFlag("server.host", serverCmd.Flags().Lookup("host"))
 	viper.BindPFlag("server.port", serverCmd.Flags().Lookup("port"))
@@ -78,11 +78,11 @@ func runServer(cmd *cobra.Command, args []string) error {
 
 	// Initialize API server
 	apiServer := api.NewServer(searchEngine, indexerService, cfg)
-	
+
 	// Setup HTTP server
 	server := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
-		Handler: apiServer.Router(),
+		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
+		Handler:      apiServer.Router(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

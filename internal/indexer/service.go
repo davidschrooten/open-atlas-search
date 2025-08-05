@@ -10,10 +10,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/david/open-atlas-search/config"
-	"github.com/david/open-atlas-search/internal/mongodb"
-	"github.com/david/open-atlas-search/internal/search"
-	syncstate "github.com/david/open-atlas-search/internal/sync"
+	"github.com/davidschrooten/open-atlas-search/config"
+	"github.com/davidschrooten/open-atlas-search/internal/mongodb"
+	"github.com/davidschrooten/open-atlas-search/internal/search"
+	syncstate "github.com/davidschrooten/open-atlas-search/internal/sync"
 )
 
 // Service manages indexing operations
@@ -97,10 +97,10 @@ func (s *Service) setupTimestampFields() error {
 			// Ask user if they want to add the timestamp field
 			log.Printf("Timestamp field '%s' not found in collection '%s'", timestampField, indexCfg.Collection)
 			log.Printf("Do you want to add '%s' field to all documents in collection '%s'? This will set the field to current timestamp for existing documents. (y/N)", timestampField, indexCfg.Collection)
-			
+
 			var response string
 			fmt.Scanln(&response)
-			
+
 			if response == "y" || response == "Y" || response == "yes" || response == "Yes" {
 				log.Printf("Adding '%s' field to collection '%s'...", timestampField, indexCfg.Collection)
 				if err := s.mongoClient.AddTimestampField(indexCfg.Collection, timestampField); err != nil {
@@ -239,7 +239,7 @@ func (s *Service) performInitialIndexing(ctx context.Context, indexCfg config.In
 		s.syncStateManager.UpdateProgress(collectionKey)
 	}
 
-	log.Printf("Initial indexing completed for %s.%s: %d documents indexed", 
+	log.Printf("Initial indexing completed for %s.%s: %d documents indexed",
 		indexCfg.Database, indexCfg.Collection, count)
 
 	// Set final status to idle after completion
@@ -429,7 +429,6 @@ func (s *Service) performPoll(ctx context.Context, indexCfg config.IndexConfig) 
 	s.searchEngine.UpdateLastSync(indexName, time.Now())
 }
 
-
 // indexBatch indexes a batch of documents using bulk operations for better performance
 func (s *Service) indexBatch(indexName string, batch []map[string]interface{}) {
 	if s.config.Search.BulkIndexing {
@@ -509,9 +508,9 @@ func (s *Service) GetIndexStats(indexName string) (map[string]interface{}, error
 	}
 
 	stats := map[string]interface{}{
-		"name":      indexName,
-		"docCount":  docCount,
-		"status":    "active",
+		"name":     indexName,
+		"docCount": docCount,
+		"status":   "active",
 	}
 
 	return stats, nil
