@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "open-atlas-search.configMapName" . }}
+  labels:
+    {{- include "open-atlas-search.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    server:
+      port: {{ .Values.config.server.port }}
+    mongodb:
+      uri: {{ .Values.config.mongodb.uri | quote }}
+    search:
+      index_path: {{ .Values.config.search.index_path | quote }}
