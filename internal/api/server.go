@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -36,6 +35,7 @@ func (s *Server) Router() http.Handler {
 
 	r.Post("/indexes/{index}/search", s.handleSearch)
 	r.Get("/indexes/{index}/status", s.handleStatus)
+	r.Get("/indexes/{index}/mapping", s.handleMapping)
 	r.Get("/indexes", s.handleListIndexes)
 	r.Get("/health", s.handleHealth)
 	r.Get("/ready", s.handleReady)
@@ -95,12 +95,10 @@ func (s *Server) handleListIndexes(w http.ResponseWriter, r *http.Request) {
 		syncStates := s.indexerService.GetSyncStates()
 		for i := range indexes {
 			// Map index name to collection key for sync state lookup
-			// Index name format: database.collection.indexname
+			// Index name is now just the simple name, we need to find the matching collection
 			indexName := indexes[i].Name
-			// Extract database and collection from index name
-			parts := strings.Split(indexName, ".")
-			if len(parts) >= 2 {
-				collectionKey := fmt.Sprintf("%s.%s", parts[0], parts[1])
+			collectionKey := s.findCollectionKeyForIndex(indexName)
+			if collectionKey != "" {
 				if syncState, exists := syncStates[collectionKey]; exists {
 					if string(syncState.SyncStatus) == "in_progress" {
 						indexes[i].Status = "syncing"
@@ -150,9 +148,8 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	// Apply sync state to the specific index
 	if s.indexerService != nil {
 		syncStates := s.indexerService.GetSyncStates()
-		parts := strings.Split(targetIndex.Name, ".")
-		if len(parts) >= 2 {
-			collectionKey := fmt.Sprintf("%s.%s", parts[0], parts[1])
+		collectionKey := s.findCollectionKeyForIndex(targetIndex.Name)
+		if collectionKey != "" {
 			if syncState, exists := syncStates[collectionKey]; exists {
 				if string(syncState.SyncStatus) == "in_progress" {
 					targetIndex.Status = "syncing"
@@ -220,6 +217,33 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 			"indexes": "ok",
 		},
 	})
+}
+
+func (s *Server) handleMapping(w http.ResponseWriter, r *http.Request) {
+	index := chi.URLParam(r, "index")
+	if index == "" {
+		http.Error(w, "index parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	mapping, err := s.searchEngine.GetIndexMapping(index)
+	if err != nil {
+		log.Printf("Mapping error: %v", err)
+		http.Error(w, "failed to get mapping", http.StatusInternalServerError)
+		return
+	}
+
+	response(w, http.StatusOK, mapping)
+}
+
+// findCollectionKeyForIndex finds the collection key for a given index name
+func (s *Server) findCollectionKeyForIndex(indexName string) string {
+	for _, indexCfg := range s.config.Indexes {
+		if indexCfg.Name == indexName {
+			return fmt.Sprintf("%s.%s", indexCfg.Database, indexCfg.Collection)
+		}
+	}
+	return ""
 }
 
 func response(w http.ResponseWriter, status int, data interface{}) {

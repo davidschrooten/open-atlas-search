@@ -75,7 +75,7 @@ func (e *Engine) CreateIndex(indexCfg config.IndexConfig) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	indexName := fmt.Sprintf("%s.%s.%s", indexCfg.Database, indexCfg.Collection, indexCfg.Name)
+	indexName := indexCfg.Name
 	indexPath := filepath.Join(e.indexPath, indexName)
 
 	// Create mapping based on configuration
@@ -186,7 +186,7 @@ func (e *Engine) RemoveIndex(indexName string) error {
 func (e *Engine) CleanupIndexes(cfg *config.Config) {
 	configuredIndexes := make(map[string]bool)
 	for _, indexCfg := range cfg.Indexes {
-		indexName := fmt.Sprintf("%s.%s.%s", indexCfg.Database, indexCfg.Collection, indexCfg.Name)
+		indexName := indexCfg.Name
 		configuredIndexes[indexName] = true
 	}
 
@@ -362,9 +362,9 @@ func (e *Engine) createMapping(def config.IndexDefinition) mapping.IndexMapping 
 	}
 
 	// Configure field mappings
-	for fieldName, fieldCfg := range def.Mappings.Fields {
+	for _, fieldCfg := range def.Mappings.Fields {
 		fieldMapping := e.createFieldMapping(fieldCfg)
-		indexMapping.DefaultMapping.AddFieldMappingsAt(fieldName, fieldMapping)
+		indexMapping.DefaultMapping.AddFieldMappingsAt(fieldCfg.Name, fieldMapping)
 	}
 
 	return indexMapping
@@ -588,4 +588,27 @@ func (e *Engine) UpdateLastSync(indexName string, syncTime time.Time) {
 	e.syncMutex.Lock()
 	defer e.syncMutex.Unlock()
 	e.lastSync[indexName] = syncTime
+}
+
+// GetIndexMapping returns the mapping configuration for an index
+func (e *Engine) GetIndexMapping(indexName string) (map[string]interface{}, error) {
+	e.mutex.RLock()
+	_, exists := e.indexes[indexName]
+	e.mutex.RUnlock()
+
+	if !exists {
+		return nil, fmt.Errorf("index %s not found", indexName)
+	}
+
+	// Return basic mapping info
+	// For a more complete implementation, you'd need to store the original config
+	// or parse the bleve mapping structure more carefully
+	result := map[string]interface{}{
+		"name": indexName,
+		"type": "bleve",
+		"status": "active",
+		"message": "Mapping details available through Bleve index introspection",
+	}
+
+	return result, nil
 }

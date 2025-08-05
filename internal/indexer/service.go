@@ -166,7 +166,7 @@ func (s *Service) performInitialIndexing(ctx context.Context, indexCfg config.In
 
 	log.Printf("Starting initial indexing for %s.%s", indexCfg.Database, indexCfg.Collection)
 
-	indexName := fmt.Sprintf("%s.%s.%s", indexCfg.Database, indexCfg.Collection, indexCfg.Name)
+	indexName := indexCfg.Name
 	collectionKey := fmt.Sprintf("%s.%s", indexCfg.Database, indexCfg.Collection)
 
 	// Set initial sync status to in_progress
@@ -256,7 +256,7 @@ func (s *Service) pollForChanges(ctx context.Context, indexCfg config.IndexConfi
 
 	log.Printf("Starting polling for changes on %s.%s", indexCfg.Database, indexCfg.Collection)
 
-	indexName := fmt.Sprintf("%s.%s.%s", indexCfg.Database, indexCfg.Collection, indexCfg.Name)
+	indexName := indexCfg.Name
 	collectionKey := fmt.Sprintf("%s.%s", indexCfg.Database, indexCfg.Collection)
 
 	// Get timestamp field for this collection
@@ -325,7 +325,7 @@ func (s *Service) pollForChanges(ctx context.Context, indexCfg config.IndexConfi
 
 // performPoll performs a single polling operation to check for new documents
 func (s *Service) performPoll(ctx context.Context, indexCfg config.IndexConfig) {
-	indexName := fmt.Sprintf("%s.%s.%s", indexCfg.Database, indexCfg.Collection, indexCfg.Name)
+	indexName := indexCfg.Name
 	collectionKey := fmt.Sprintf("%s.%s", indexCfg.Database, indexCfg.Collection)
 
 	// Get current collection state

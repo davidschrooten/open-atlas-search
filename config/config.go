@@ -61,12 +61,14 @@ type IndexDefinition struct {
 
 // IndexMappings contains field mappings for the index
 type IndexMappings struct {
-	Dynamic bool                   `mapstructure:"dynamic"`
-	Fields  map[string]FieldConfig `mapstructure:"fields"`
+	Dynamic bool          `mapstructure:"dynamic"`
+	Fields  []FieldConfig `mapstructure:"fields"`
 }
 
 // FieldConfig represents field-specific indexing configuration
 type FieldConfig struct {
+	Name     string                 `mapstructure:"name"`                // Field name in the index
+	Field    string                 `mapstructure:"field"`               // Source field name in the document
 	Type     string                 `mapstructure:"type"`
 	Analyzer string                 `mapstructure:"analyzer,omitempty"`
 	Multi    map[string]FieldConfig `mapstructure:"multi,omitempty"`

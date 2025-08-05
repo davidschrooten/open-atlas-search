@@ -23,6 +23,9 @@ type SearchEngine interface {
 	// Search operations
 	Search(req SearchRequest) (*SearchResult, error)
 
+	// Mapping operations
+	GetIndexMapping(indexName string) (map[string]interface{}, error)
+
 	// Sync tracking
 	UpdateLastSync(indexName string, syncTime time.Time)
 
