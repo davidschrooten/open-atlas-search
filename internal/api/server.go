@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,6 +13,13 @@ import (
 	"github.com/david/open-atlas-search/internal/indexer"
 	"github.com/david/open-atlas-search/internal/search"
 )
+
+// ErrorResponse represents a structured API error response
+type ErrorResponse struct {
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+}
 
 // Server represents the API server
 type Server struct {
@@ -33,6 +41,10 @@ func NewServer(searchEngine search.SearchEngine, indexerService *indexer.Service
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 
+	// Middleware
+	r.Use(s.corsMiddleware)
+	r.Use(s.methodNotAllowedMiddleware)
+
 	r.Post("/indexes/{index}/search", s.handleSearch)
 	r.Get("/indexes/{index}/status", s.handleStatus)
 	r.Get("/indexes/{index}/mapping", s.handleMapping)
@@ -44,23 +56,56 @@ func (s *Server) Router() http.Handler {
 }
 
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
-	index := chi.URLParam(r, "index")
+	// Validate index parameter
+	index := strings.TrimSpace(chi.URLParam(r, "index"))
 	if index == "" {
-		http.Error(w, "index parameter is required", http.StatusBadRequest)
+		s.errorResponse(w, "bad_request", "Index parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate index exists
+	if !s.indexExists(index) {
+		s.errorResponse(w, "index_not_found", fmt.Sprintf("Index '%s' not found", index), http.StatusNotFound)
+		return
+	}
+
+	// Validate request body
+	if r.Body == nil {
+		s.errorResponse(w, "bad_request", "Request body is required", http.StatusBadRequest)
 		return
 	}
 
 	var searchReq struct {
-		Query  map[string]interface{}     `json:"query"`
+		Query  map[string]interface{}        `json:"query"`
 		Facets map[string]search.FacetRequest `json:"facets"`
-		Size   int                       `json:"size"`
-		From   int                       `json:"from"`
+		Size   int                          `json:"size"`
+		From   int                          `json:"from"`
 	}
 
 	// Parse the request body
 	if err := json.NewDecoder(r.Body).Decode(&searchReq); err != nil {
-		http.Error(w, "invalid request payload", http.StatusBadRequest)
+		log.Printf("Failed to decode search request: %v", err)
+		s.errorResponse(w, "invalid_json", "Invalid JSON in request body: "+err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Validate search parameters
+	if searchReq.Size < 0 {
+		s.errorResponse(w, "invalid_parameter", "Size parameter cannot be negative", http.StatusBadRequest)
+		return
+	}
+	if searchReq.From < 0 {
+		s.errorResponse(w, "invalid_parameter", "From parameter cannot be negative", http.StatusBadRequest)
+		return
+	}
+	if searchReq.Size > 1000 {
+		s.errorResponse(w, "invalid_parameter", "Size parameter cannot exceed 1000", http.StatusBadRequest)
+		return
+	}
+
+	// Set defaults
+	if searchReq.Size == 0 {
+		searchReq.Size = 10
 	}
 
 	// Prepare the search request for the search engine
@@ -74,23 +119,30 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	searchResult, err := s.searchEngine.Search(sReq)
 	if err != nil {
-		log.Printf("Search error: %v", err)
-		http.Error(w, "search failed", http.StatusInternalServerError)
+		log.Printf("Search error for index '%s': %v", index, err)
+		// Check if it's an index not found error
+		if strings.Contains(err.Error(), "not found") {
+			s.errorResponse(w, "index_not_found", fmt.Sprintf("Index '%s' not found", index), http.StatusNotFound)
+		} else if strings.Contains(err.Error(), "query") {
+			s.errorResponse(w, "invalid_query", "Invalid search query: "+err.Error(), http.StatusBadRequest)
+		} else {
+			s.errorResponse(w, "search_failed", "Search operation failed", http.StatusInternalServerError)
+		}
 		return
 	}
 
-	response(w, http.StatusOK, searchResult)
+	s.successResponse(w, searchResult)
 }
 
 func (s *Server) handleListIndexes(w http.ResponseWriter, r *http.Request) {
 	indexes, err := s.searchEngine.ListIndexes()
 	if err != nil {
-		log.Printf("List indexes error: %v", err)
-		http.Error(w, "failed to list indexes", http.StatusInternalServerError)
-			return
+		log.Printf("Failed to list indexes: %v", err)
+		s.errorResponse(w, "list_indexes_failed", "Failed to retrieve indexes", http.StatusInternalServerError)
+		return
 	}
 
-// Get sync states from indexer service and update indexes status
+	// Get sync states from indexer service and update indexes status
 	if s.indexerService != nil {
 		syncStates := s.indexerService.GetSyncStates()
 		for i := range indexes {
@@ -111,23 +163,24 @@ func (s *Server) handleListIndexes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response(w, http.StatusOK, map[string]interface{}{
+	s.successResponse(w, map[string]interface{}{
 		"indexes": indexes,
 		"total":   len(indexes),
 	})
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
-	index := chi.URLParam(r, "index")
+	// Validate index parameter
+	index := strings.TrimSpace(chi.URLParam(r, "index"))
 	if index == "" {
-		http.Error(w, "index parameter is required", http.StatusBadRequest)
+		s.errorResponse(w, "bad_request", "Index parameter is required", http.StatusBadRequest)
 		return
 	}
 
 	indexes, err := s.searchEngine.ListIndexes()
 	if err != nil {
-		log.Printf("Status error: %v", err)
-		http.Error(w, "failed to get status", http.StatusInternalServerError)
+		log.Printf("Failed to list indexes for status check: %v", err)
+		s.errorResponse(w, "internal_error", "Failed to retrieve index status", http.StatusInternalServerError)
 		return
 	}
 
@@ -141,7 +194,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if targetIndex == nil {
-		http.Error(w, "index not found", http.StatusNotFound)
+		s.errorResponse(w, "index_not_found", fmt.Sprintf("Index '%s' not found", index), http.StatusNotFound)
 		return
 	}
 
@@ -168,72 +221,90 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"index":   *targetIndex,
 	}
 
-	response(w, http.StatusOK, status)
+	s.successResponse(w, status)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	// Simple health check
-	response(w, http.StatusOK, map[string]interface{}{
+	// Always return healthy for basic health check
+	s.successResponse(w, map[string]interface{}{
 		"status": "healthy",
+		"service": "open-atlas-search",
 	})
 }
 
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
+	checks := map[string]string{}
+
 	// Check if search engine is initialized
 	if s.searchEngine == nil {
-		http.Error(w, "search engine not initialized", http.StatusServiceUnavailable)
+		s.errorResponse(w, "service_unavailable", "Search engine not initialized", http.StatusServiceUnavailable)
 		return
 	}
+	checks["searchEngine"] = "ok"
 
-	// Check if indexer service is initialized  
+	// Check if indexer service is initialized
 	if s.indexerService == nil {
-		http.Error(w, "indexer service not initialized", http.StatusServiceUnavailable)
+		s.errorResponse(w, "service_unavailable", "Indexer service not initialized", http.StatusServiceUnavailable)
 		return
 	}
+	checks["indexerService"] = "ok"
 
-	// Create a simple readiness check by trying to list indexes
-	// This will verify that the search engine is working
+	// Verify that the search engine is working
 	if _, err := s.searchEngine.ListIndexes(); err != nil {
 		log.Printf("Readiness check failed - cannot list indexes: %v", err)
-		http.Error(w, "search engine not ready", http.StatusServiceUnavailable)
+		s.errorResponse(w, "service_unavailable", "Search engine not ready", http.StatusServiceUnavailable)
 		return
 	}
 
-	// If we have any configured indexes, verify at least one exists
+	// If we have configured indexes, verify at least one exists
 	if len(s.config.Indexes) > 0 {
 		indexes, err := s.searchEngine.ListIndexes()
-		if err != nil || len(indexes) == 0 {
+		if err != nil {
+			log.Printf("Readiness check failed - error listing indexes: %v", err)
+			s.errorResponse(w, "service_unavailable", "Cannot verify indexes", http.StatusServiceUnavailable)
+			return
+		}
+		if len(indexes) == 0 {
 			log.Printf("Readiness check failed - no indexes available")
-			http.Error(w, "no indexes available", http.StatusServiceUnavailable)
+			s.errorResponse(w, "service_unavailable", "No indexes available", http.StatusServiceUnavailable)
 			return
 		}
 	}
+	checks["indexes"] = "ok"
 
-	response(w, http.StatusOK, map[string]interface{}{
+	s.successResponse(w, map[string]interface{}{
 		"status": "ready",
-		"checks": map[string]string{
-			"searchEngine": "ok",
-			"indexerService": "ok",
-			"indexes": "ok",
-		},
+		"service": "open-atlas-search", 
+		"checks": checks,
 	})
 }
 
 func (s *Server) handleMapping(w http.ResponseWriter, r *http.Request) {
-	index := chi.URLParam(r, "index")
+	// Validate index parameter
+	index := strings.TrimSpace(chi.URLParam(r, "index"))
 	if index == "" {
-		http.Error(w, "index parameter is required", http.StatusBadRequest)
+		s.errorResponse(w, "bad_request", "Index parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate index exists
+	if !s.indexExists(index) {
+		s.errorResponse(w, "index_not_found", fmt.Sprintf("Index '%s' not found", index), http.StatusNotFound)
 		return
 	}
 
 	mapping, err := s.searchEngine.GetIndexMapping(index)
 	if err != nil {
-		log.Printf("Mapping error: %v", err)
-		http.Error(w, "failed to get mapping", http.StatusInternalServerError)
+		log.Printf("Failed to get mapping for index '%s': %v", index, err)
+		if strings.Contains(err.Error(), "not found") {
+			s.errorResponse(w, "index_not_found", fmt.Sprintf("Index '%s' not found", index), http.StatusNotFound)
+		} else {
+			s.errorResponse(w, "mapping_failed", "Failed to retrieve index mapping", http.StatusInternalServerError)
+		}
 		return
 	}
 
-	response(w, http.StatusOK, mapping)
+	s.successResponse(w, mapping)
 }
 
 // findCollectionKeyForIndex finds the collection key for a given index name
@@ -246,10 +317,66 @@ func (s *Server) findCollectionKeyForIndex(indexName string) string {
 	return ""
 }
 
-func response(w http.ResponseWriter, status int, data interface{}) {
-	w.WriteHeader(status)
+// successResponse writes a successful response in JSON
+func (s *Server) successResponse(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		log.Printf("Unable to encode response: %v", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("Failed to encode response: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+// errorResponse writes an error response in JSON
+func (s *Server) errorResponse(w http.ResponseWriter, errorType, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	errResp := ErrorResponse{
+		Error:   errorType,
+		Message: message,
+		Code:    statusCode,
+	}
+	if err := json.NewEncoder(w).Encode(errResp); err != nil {
+		log.Printf("Failed to encode error response: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// indexExists checks if an index exists
+func (s *Server) indexExists(indexName string) bool {
+	indexes, err := s.searchEngine.ListIndexes()
+	if err != nil {
+		log.Printf("Error checking if index exists: %v", err)
+		return false
+	}
+	for _, index := range indexes {
+		if index.Name == indexName {
+			return true
+		}
+	}
+	return false
+}
+
+// corsMiddleware adds CORS headers
+func (s *Server) corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		
+		next.ServeHTTP(w, r)
+	})
+}
+
+// methodNotAllowedMiddleware handles unsupported HTTP methods
+func (s *Server) methodNotAllowedMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Let chi handle the routing first
+		next.ServeHTTP(w, r)
+	})
 }
