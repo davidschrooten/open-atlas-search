@@ -55,3 +55,4 @@ terraform.rc
 config.yaml
 config.toml
 indexes/
+sync_state.json
