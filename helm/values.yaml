@@ -81,6 +81,17 @@ config:
   search:
     index_path: "/data/indexes"
 
+# Cluster settings
+cluster:
+  enabled: false
+  nodeID: "node-1"
+  bindAddr: "0.0.0.0:7946"
+  raftPort: 7946
+  raftDir: "/data/raft"
+  bootstrap: false # Set to true for the first node
+  joinAddr: [] # Add existing nodes here when joining
+  dataDir: "/data/cluster"
+
 # Environment variables
 env: []
   # - name: LOG_LEVEL

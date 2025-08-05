@@ -12,6 +12,7 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	MongoDB  MongoDBConfig  `mapstructure:"mongodb"`
 	Search   SearchConfig   `mapstructure:"search"`
+	Cluster  ClusterConfig  `mapstructure:"cluster"`
 	Indexes  []IndexConfig  `mapstructure:"indexes"`
 }
 
@@ -43,6 +44,18 @@ type SearchConfig struct {
 	IndexBufferSize int  `mapstructure:"index_buffer_size"` // Buffer size for index operations
 }
 
+// ClusterConfig contains cluster-specific settings
+type ClusterConfig struct {
+	Enabled     bool     `mapstructure:"enabled"`       // Enable cluster mode
+	NodeID      string   `mapstructure:"node_id"`       // Unique node identifier
+	BindAddr    string   `mapstructure:"bind_addr"`     // Address to bind Raft transport
+	RaftPort    int      `mapstructure:"raft_port"`     // Port for Raft communication
+	RaftDir     string   `mapstructure:"raft_dir"`      // Directory for Raft logs and snapshots
+	Bootstrap   bool     `mapstructure:"bootstrap"`     // Bootstrap cluster (only for first node)
+	JoinAddr    []string `mapstructure:"join_addr"`     // Addresses of existing cluster members to join
+	DataDir     string   `mapstructure:"data_dir"`      // Directory for cluster data
+}
+
 // IndexConfig represents a search index configuration similar to MongoDB Atlas Search
 type IndexConfig struct {
 	Name           string                 `mapstructure:"name"`
@@ -52,6 +65,13 @@ type IndexConfig struct {
 	TimestampField string                 `mapstructure:"timestamp_field,omitempty"` // Custom field for polling timestamps
 	IDField        string                 `mapstructure:"id_field,omitempty"`        // Custom field name for document ID (defaults to "_id")
 	PollInterval   int                    `mapstructure:"poll_interval,omitempty"`   // Collection-specific poll interval in seconds
+	Distribution   IndexDistribution      `mapstructure:"distribution,omitempty"`    // Distribution settings for cluster mode
+}
+
+// IndexDistribution defines how an index is distributed across the cluster
+type IndexDistribution struct {
+	Replicas int `mapstructure:"replicas"` // Number of replicas for this index (default: 1)
+	Shards   int `mapstructure:"shards"`   // Number of shards for this index (default: 1)
 }
 
 // IndexDefinition mirrors MongoDB Atlas Search index structure
