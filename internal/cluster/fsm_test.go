@@ -50,7 +50,7 @@ func TestFSM_Apply(t *testing.T) {
 				Type: IndexDistributionCommand,
 				Data: map[string]interface{}{
 					"index_name": "test-index",
-					"shards":     []interface{}{"shard-1", "shard-2"},
+					"shards":     []string{"shard-1", "shard-2"},
 				},
 			},
 			expectedRes: "index test-index distribution updated",

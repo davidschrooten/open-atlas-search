@@ -409,9 +409,9 @@ func (e *Engine) createMapping(def config.IndexDefinition) mapping.IndexMapping 
 	}
 
 	// Configure field mappings
-	for fieldName, fieldCfg := range def.Mappings.Fields {
+	for _, fieldCfg := range def.Mappings.Fields {
 		fieldMapping := e.createFieldMapping(fieldCfg)
-		indexMapping.DefaultMapping.AddFieldMappingsAt(fieldName, fieldMapping)
+		indexMapping.DefaultMapping.AddFieldMappingsAt(fieldCfg.Name, fieldMapping)
 	}
 
 	return indexMapping
