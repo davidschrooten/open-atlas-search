@@ -2,8 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -103,7 +105,38 @@ func (s *Server) handleListIndexes(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("List indexes error: %v", err)
 		http.Error(w, "failed to list indexes", http.StatusInternalServerError)
-		return
+			return
+	}
+
+	// Get sync states from indexer service and enhance indexes with syncInfo
+	if s.indexerService != nil {
+		syncStates := s.indexerService.GetSyncStates()
+		for i := range indexes {
+			// Map index name to collection key for sync state lookup
+			// Index name format: database.collection.indexname
+			indexName := indexes[i].Name
+			// Extract database and collection from index name
+			parts := strings.Split(indexName, ".")
+			if len(parts) >= 2 {
+				collectionKey := fmt.Sprintf("%s.%s", parts[0], parts[1])
+				if syncState, exists := syncStates[collectionKey]; exists {
+					status := "idle"
+					progress := "not_available"
+					
+					if syncState.SyncStatus != "" {
+						status = string(syncState.SyncStatus)
+					}
+					if syncState.Progress != "" {
+						progress = syncState.Progress
+					}
+					
+					indexes[i].SyncInfo = &search.SyncInfo{
+						Status:   status,
+						Progress: progress,
+					}
+				}
+			}
+		}
 	}
 
 	response(w, http.StatusOK, map[string]interface{}{

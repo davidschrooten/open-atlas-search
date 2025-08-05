@@ -9,15 +9,26 @@ import (
 	"time"
 )
 
+// SyncStatus represents the current sync status
+type SyncStatus string
+
+const (
+	SyncStatusIdle       SyncStatus = "idle"
+	SyncStatusInProgress SyncStatus = "in_progress"
+)
+
 // CollectionState represents the sync state for a single collection
 type CollectionState struct {
-	LastPollTime     time.Time `json:"lastPollTime"`
-	LastSyncTime     time.Time `json:"lastSyncTime"`
-	IndexName        string    `json:"indexName"`
-	CollectionKey    string    `json:"collectionKey"`
-	TimestampField   string    `json:"timestampField"`
-	IDField          string    `json:"idField"`
-	DocumentsIndexed int64     `json:"documentsIndexed"`
+	LastPollTime     time.Time  `json:"lastPollTime"`
+	LastSyncTime     time.Time  `json:"lastSyncTime"`
+	IndexName        string     `json:"indexName"`
+	CollectionKey    string     `json:"collectionKey"`
+	TimestampField   string     `json:"timestampField"`
+	IDField          string     `json:"idField"`
+	DocumentsIndexed int64      `json:"documentsIndexed"`
+	SyncStatus       SyncStatus `json:"syncStatus"`
+	Progress         string     `json:"progress"`
+	TotalDocuments   int64      `json:"totalDocuments,omitempty"`
 }
 
 // SyncState manages persistent state for all collections
@@ -181,6 +192,71 @@ func (sm *StateManager) RemoveCollectionState(collectionKey string) {
 	defer sm.mutex.Unlock()
 
 	delete(sm.state.Collections, collectionKey)
+}
+
+// SetSyncStatus updates the sync status for a collection
+func (sm *StateManager) SetSyncStatus(collectionKey string, status SyncStatus) {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
+
+	if state, exists := sm.state.Collections[collectionKey]; exists {
+		state.SyncStatus = status
+	} else {
+		sm.state.Collections[collectionKey] = &CollectionState{
+			CollectionKey: collectionKey,
+			SyncStatus:    status,
+		}
+	}
+}
+
+// SetProgress updates the progress for a collection
+func (sm *StateManager) SetProgress(collectionKey string, progress string) {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
+
+	if state, exists := sm.state.Collections[collectionKey]; exists {
+		state.Progress = progress
+	} else {
+		sm.state.Collections[collectionKey] = &CollectionState{
+			CollectionKey: collectionKey,
+			Progress:      progress,
+		}
+	}
+}
+
+// SetTotalDocuments updates the total documents count for a collection
+func (sm *StateManager) SetTotalDocuments(collectionKey string, total int64) {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
+
+	if state, exists := sm.state.Collections[collectionKey]; exists {
+		state.TotalDocuments = total
+	} else {
+		sm.state.Collections[collectionKey] = &CollectionState{
+			CollectionKey:  collectionKey,
+			TotalDocuments: total,
+		}
+	}
+}
+
+// UpdateProgress calculates and updates progress based on indexed vs total documents
+func (sm *StateManager) UpdateProgress(collectionKey string) {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
+
+	if state, exists := sm.state.Collections[collectionKey]; exists {
+		if state.TotalDocuments > 0 {
+			percentage := float64(state.DocumentsIndexed) / float64(state.TotalDocuments) * 100
+			if percentage >= 100 {
+				state.Progress = "100%"
+				state.SyncStatus = SyncStatusIdle
+			} else {
+				state.Progress = fmt.Sprintf("%.1f%%", percentage)
+			}
+		} else {
+			state.Progress = "not_available"
+		}
+	}
 }
 
 // StartPeriodicSave starts a goroutine that periodically saves state
