@@ -15,6 +15,7 @@ import (
 
 	"github.com/davidschrooten/open-atlas-search/config"
 	"github.com/davidschrooten/open-atlas-search/internal/api"
+	"github.com/davidschrooten/open-atlas-search/internal/cluster"
 	"github.com/davidschrooten/open-atlas-search/internal/indexer"
 	"github.com/davidschrooten/open-atlas-search/internal/mongodb"
 	"github.com/davidschrooten/open-atlas-search/internal/search"
@@ -68,6 +69,20 @@ func runServer(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize indexer: %w", err)
 	}
 
+// Initialize cluster manager if cluster mode is enabled
+	var clusterManager *cluster.Manager
+	if cfg.Cluster.Enabled {
+		clusterManager, err = cluster.NewManager(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to initialize cluster manager: %w", err)
+		}
+
+		if err := clusterManager.Start(); err != nil {
+			return fmt.Errorf("failed to start cluster manager: %w", err)
+		}
+		defer clusterManager.Stop()
+	}
+
 	// Start indexing process
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -77,7 +92,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}
 
 	// Initialize API server
-	apiServer := api.NewServer(searchEngine, indexerService, cfg)
+	apiServer := api.NewServer(searchEngine, indexerService, cfg, clusterManager)
 
 	// Setup HTTP server
 	server := &http.Server{

@@ -12,3 +12,13 @@ data:
       uri: {{ .Values.config.mongodb.uri | quote }}
     search:
       index_path: {{ .Values.config.search.index_path | quote }}
+    cluster:
+      enabled: {{ .Values.cluster.enabled }}
+      node_id: {{ .Values.cluster.nodeID | quote }}
+      bind_addr: {{ .Values.cluster.bindAddr | quote }}
+      raft_port: {{ .Values.cluster.raftPort }}
+      raft_dir: {{ .Values.cluster.raftDir | quote }}
+      bootstrap: {{ .Values.cluster.bootstrap }}
+      join_addr:
+{{ toYaml .Values.cluster.joinAddr | indent 8 }}
+      data_dir: {{ .Values.cluster.dataDir | quote }}
