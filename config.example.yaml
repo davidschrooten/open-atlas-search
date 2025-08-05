@@ -1,0 +1,70 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "myapp"
+  username: ""
+  password: ""
+  timeout: 30
+
+search:
+  index_path: "./indexes"
+  batch_size: 1000
+  flush_interval: 30
+
+indexes:
+  - name: "default"
+    database: "myapp"
+    collection: "products"
+    definition:
+      mappings:
+        dynamic: true
+        fields:
+          name:
+            type: "text"
+            analyzer: "standard"
+            facet: false
+          description:
+            type: "text"
+            analyzer: "standard"
+          category:
+            type: "keyword" 
+            facet: true
+          price:
+            type: "numeric"
+            facet: true
+          tags:
+            type: "text"
+            analyzer: "keyword"
+            facet: true
+          created_at:
+            type: "date"
+            facet: false
+          in_stock:
+            type: "boolean"
+            facet: true
+
+  - name: "search"
+    database: "myapp"
+    collection: "articles"
+    definition:
+      mappings:
+        dynamic: false
+        fields:
+          title:
+            type: "text"
+            analyzer: "standard"
+          content:
+            type: "text" 
+            analyzer: "standard"
+          author:
+            type: "keyword"
+            facet: true
+          published_date:
+            type: "date"
+            facet: true
+          status:
+            type: "keyword"
+            facet: true

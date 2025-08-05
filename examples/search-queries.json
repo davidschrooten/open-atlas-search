@@ -1,0 +1,166 @@
+{
+  "examples": [
+    {
+      "name": "Simple text search",
+      "query": {
+        "index": "myapp_products_default",
+        "query": {
+          "text": {
+            "query": "laptop",
+            "path": "name"
+          }
+        },
+        "size": 10,
+        "from": 0
+      }
+    },
+    {
+      "name": "Text search with facets",
+      "query": {
+        "index": "myapp_products_default",
+        "query": {
+          "text": {
+            "query": "gaming",
+            "path": "name"
+          }
+        },
+        "facets": {
+          "categories": {
+            "type": "terms",
+            "field": "category",
+            "size": 10
+          },
+          "price_ranges": {
+            "type": "numeric",
+            "field": "price",
+            "size": 5
+          },
+          "in_stock": {
+            "type": "terms",
+            "field": "in_stock",
+            "size": 2
+          }
+        },
+        "size": 20,
+        "from": 0
+      }
+    },
+    {
+      "name": "Compound query with multiple conditions",
+      "query": {
+        "index": "myapp_products_default",
+        "query": {
+          "compound": {
+            "must": [
+              {
+                "text": {
+                  "query": "laptop",
+                  "path": "name"
+                }
+              },
+              {
+                "term": {
+                  "path": "category",
+                  "value": "electronics"
+                }
+              }
+            ],
+            "should": [
+              {
+                "term": {
+                  "path": "brand",
+                  "value": "apple"
+                }
+              },
+              {
+                "term": {
+                  "path": "brand",
+                  "value": "dell"
+                }
+              }
+            ]
+          }
+        },
+        "facets": {
+          "brands": {
+            "type": "terms",
+            "field": "brand",
+            "size": 10
+          }
+        },
+        "size": 15
+      }
+    },
+    {
+      "name": "Wildcard search",
+      "query": {
+        "index": "myapp_products_default",
+        "query": {
+          "wildcard": {
+            "path": "name",
+            "value": "macbook*"
+          }
+        },
+        "size": 10
+      }
+    },
+    {
+      "name": "Term search for exact matches",
+      "query": {
+        "index": "myapp_products_default",
+        "query": {
+          "term": {
+            "path": "category",
+            "value": "smartphones"
+          }
+        },
+        "facets": {
+          "brands": {
+            "type": "terms",
+            "field": "brand",
+            "size": 5
+          }
+        },
+        "size": 25
+      }
+    },
+    {
+      "name": "Article search with highlighting",
+      "query": {
+        "index": "myapp_articles_search",
+        "query": {
+          "text": {
+            "query": "artificial intelligence machine learning",
+            "path": "content"
+          }
+        },
+        "highlight": {
+          "fields": ["title", "content"]
+        },
+        "facets": {
+          "authors": {
+            "type": "terms",
+            "field": "author",
+            "size": 10
+          },
+          "status": {
+            "type": "terms",
+            "field": "status",
+            "size": 3
+          }
+        },
+        "size": 10
+      }
+    }
+  ],
+  "curl_examples": [
+    {
+      "name": "Basic text search",
+      "command": "curl -X POST http://localhost:8080/search -H \"Content-Type: application/json\" -d '{\"index\":\"myapp_products_default\",\"query\":{\"text\":{\"query\":\"laptop\",\"path\":\"name\"}},\"size\":10}'"
+    },
+    {
+      "name": "Search with facets",
+      "command": "curl -X POST http://localhost:8080/search -H \"Content-Type: application/json\" -d '{\"index\":\"myapp_products_default\",\"query\":{\"text\":{\"query\":\"gaming\",\"path\":\"name\"}},\"facets\":{\"categories\":{\"type\":\"terms\",\"field\":\"category\",\"size\":10}},\"size\":20}'"
+    }
+  ]
+}
