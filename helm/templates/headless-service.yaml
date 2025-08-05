@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-atlas-search-headless
+  labels:
+    app: open-atlas-search
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+spec:
+  clusterIP: None
+  selector:
+    app: open-atlas-search
+  ports:
+    - port: 7946 # Used for Raft and HTTP API
+    - port: 50051 # gRPC server port for communication
+

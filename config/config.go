@@ -144,6 +144,15 @@ func setDefaults() {
 	viper.SetDefault("search.bulk_indexing", true)    // Enable bulk indexing
 	viper.SetDefault("search.prefetch_count", 5000)   // Prefetch 5000 documents
 	viper.SetDefault("search.index_buffer_size", 100) // Buffer 100 operations
+	// Cluster defaults
+	viper.SetDefault("cluster.enabled", false)
+	viper.SetDefault("cluster.node_id", "")
+	viper.SetDefault("cluster.bind_addr", "0.0.0.0:7946")
+	viper.SetDefault("cluster.raft_port", 7946)
+	viper.SetDefault("cluster.raft_dir", "./raft")
+	viper.SetDefault("cluster.bootstrap", false)
+	viper.SetDefault("cluster.join_addr", []string{})
+	viper.SetDefault("cluster.data_dir", "./cluster_data")
 }
 
 // GetMongoURI returns the complete MongoDB connection URI

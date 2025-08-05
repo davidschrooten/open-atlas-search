@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -76,6 +77,19 @@ func (e *Engine) CreateIndex(indexCfg config.IndexConfig) error {
 	defer e.mutex.Unlock()
 
 	indexName := indexCfg.Name
+	
+	// In cluster mode with multiple shards, create separate indexes for each shard
+	if indexCfg.Distribution.Shards > 1 {
+		return e.createShardedIndex(indexCfg)
+	}
+	
+	// Single shard index
+	return e.createSingleIndex(indexCfg)
+}
+
+// createSingleIndex creates a single non-sharded index
+func (e *Engine) createSingleIndex(indexCfg config.IndexConfig) error {
+	indexName := indexCfg.Name
 	indexPath := filepath.Join(e.indexPath, indexName)
 
 	// Create mapping based on configuration
@@ -97,6 +111,38 @@ func (e *Engine) CreateIndex(indexCfg config.IndexConfig) error {
 	}
 
 	e.indexes[indexName] = index
+	return nil
+}
+
+// createShardedIndex creates multiple shard indexes for a single logical index
+func (e *Engine) createShardedIndex(indexCfg config.IndexConfig) error {
+	indexName := indexCfg.Name  
+	
+	// Create mapping based on configuration
+	indexMapping := e.createMapping(indexCfg.Definition)
+	
+	for shard := 0; shard < indexCfg.Distribution.Shards; shard++ {
+		shardName := fmt.Sprintf("%s_shard_%d", indexName, shard)
+		shardPath := filepath.Join(e.indexPath, shardName)
+		
+		// Check if shard already exists
+		if _, exists := e.indexes[shardName]; exists {
+			continue // Shard already exists
+		}
+		
+		// Try to open existing shard first
+		index, err := bleve.Open(shardPath)
+		if err != nil {
+			// Create new shard if it doesn't exist
+			index, err = bleve.New(shardPath, indexMapping)
+			if err != nil {
+				return fmt.Errorf("failed to create shard %s: %w", shardName, err)
+			}
+		}
+		
+		e.indexes[shardName] = index
+	}
+	
 	return nil
 }
 
@@ -244,12 +290,15 @@ func (e *Engine) removeIndexInternal(indexName string) error {
 
 // IndexDocument indexes a document
 func (e *Engine) IndexDocument(indexName, docID string, doc map[string]interface{}) error {
+	// For sharded indexes, determine which shard to use
+	shardName := e.getShardForDocument(indexName, docID)
+	
 	e.mutex.RLock()
-	index, exists := e.indexes[indexName]
+	index, exists := e.indexes[shardName]
 	e.mutex.RUnlock()
 
 	if !exists {
-		return fmt.Errorf("index %s not found", indexName)
+		return fmt.Errorf("index/shard %s not found", shardName)
 	}
 
 	return index.Index(docID, doc)
@@ -612,4 +661,191 @@ func (e *Engine) GetIndexMapping(indexName string) (map[string]interface{}, erro
 	}
 
 	return result, nil
+}
+
+// getShardForDocument determines which shard a document should be indexed to
+func (e *Engine) getShardForDocument(indexName, docID string) string {
+	// Check if this is a sharded index by looking for shard indexes
+	shardCount := 0
+	e.mutex.RLock()
+	for name := range e.indexes {
+		if len(name) > len(indexName) && name[:len(indexName)] == indexName && name[len(indexName):len(indexName)+7] == "_shard_" {
+			shardCount++
+		}
+	}
+	e.mutex.RUnlock()
+
+	// If no shards found, use the index name directly
+	if shardCount == 0 {
+		return indexName
+	}
+
+	// Use consistent hashing to determine shard
+	hash := fnv32(docID)
+	shardNum := int(hash) % shardCount
+	return fmt.Sprintf("%s_shard_%d", indexName, shardNum)
+}
+
+// SearchSharded performs a search across all shards of an index
+func (e *Engine) SearchSharded(req SearchRequest) (*SearchResult, error) {
+	// Find all shards for this index
+	shards := e.getShardsForIndex(req.Index)
+	
+	if len(shards) == 0 {
+		// No shards found, try direct index search
+		return e.Search(req)
+	}
+
+	// Search all shards in parallel
+	type shardResult struct {
+		result *SearchResult
+		err    error
+	}
+
+	resultChan := make(chan shardResult, len(shards))
+
+	for _, shardName := range shards {
+		go func(shard string) {
+			shardReq := req
+			shardReq.Index = shard
+			result, err := e.Search(shardReq)
+			resultChan <- shardResult{result: result, err: err}
+		}(shardName)
+	}
+
+	// Collect and merge results
+	allHits := []SearchHit{}
+	allFacets := make(map[string]interface{})
+	totalCount := 0
+	maxScore := float64(0)
+
+	for i := 0; i < len(shards); i++ {
+		shardRes := <-resultChan
+		if shardRes.err != nil {
+			log.Printf("Error searching shard: %v", shardRes.err)
+			continue
+		}
+
+		allHits = append(allHits, shardRes.result.Hits...)
+		totalCount += shardRes.result.Total
+		if shardRes.result.MaxScore > maxScore {
+			maxScore = shardRes.result.MaxScore
+		}
+
+		// Merge facets (simple aggregation)
+		for name, facet := range shardRes.result.Facets {
+			if facetData, ok := facet.(map[string]interface{}); ok {
+				if buckets, ok := facetData["buckets"].([]map[string]interface{}); ok {
+					if existingFacet, exists := allFacets[name]; exists {
+						// Merge buckets
+						if existingData, ok := existingFacet.(map[string]interface{}); ok {
+							if existingBuckets, ok := existingData["buckets"].([]map[string]interface{}); ok {
+								allFacets[name] = map[string]interface{}{
+									"buckets": e.mergeFacetBuckets(existingBuckets, buckets),
+								}
+							}
+						}
+					} else {
+						allFacets[name] = facet
+					}
+				}
+			}
+		}
+	}
+
+	// Sort hits by score and apply pagination
+	e.sortHitsByScore(allHits)
+
+	// Apply pagination
+	from := req.From
+	size := req.Size
+	if size == 0 {
+		size = 10 // Default size
+	}
+
+	if from >= len(allHits) {
+		allHits = []SearchHit{}
+	} else {
+		end := from + size
+		if end > len(allHits) {
+			end = len(allHits)
+		}
+		allHits = allHits[from:end]
+	}
+
+	return &SearchResult{
+		Hits:     allHits,
+		Total:    totalCount,
+		Facets:   allFacets,
+		MaxScore: maxScore,
+	}, nil
+}
+
+// getShardsForIndex returns all shard names for a given index
+func (e *Engine) getShardsForIndex(indexName string) []string {
+	var shards []string
+	e.mutex.RLock()
+	for name := range e.indexes {
+		if len(name) > len(indexName) && name[:len(indexName)] == indexName && name[len(indexName):len(indexName)+7] == "_shard_" {
+			shards = append(shards, name)
+		}
+	}
+	e.mutex.RUnlock()
+	return shards
+}
+
+// mergeFacetBuckets merges two sets of facet buckets
+func (e *Engine) mergeFacetBuckets(buckets1, buckets2 []map[string]interface{}) []map[string]interface{} {
+	bucketMap := make(map[string]int)
+	for _, bucket := range buckets1 {
+		if key, ok := bucket["key"].(string); ok {
+			if count, ok := bucket["count"].(int); ok {
+				bucketMap[key] = count
+			}
+		}
+	}
+
+	for _, bucket := range buckets2 {
+		if key, ok := bucket["key"].(string); ok {
+			if count, ok := bucket["count"].(int); ok {
+				bucketMap[key] += count
+			}
+		}
+	}
+
+	var mergedBuckets []map[string]interface{}
+	for key, count := range bucketMap {
+		mergedBuckets = append(mergedBuckets, map[string]interface{}{
+			"key":   key,
+			"count": count,
+		})
+	}
+
+	return mergedBuckets
+}
+
+// sortHitsByScore sorts search hits by score in descending order
+func (e *Engine) sortHitsByScore(hits []SearchHit) {
+	for i := 0; i < len(hits)-1; i++ {
+		for j := i + 1; j < len(hits); j++ {
+			if hits[i].Score < hits[j].Score {
+				hits[i], hits[j] = hits[j], hits[i]
+			}
+		}
+	}
+}
+
+// fnv32 implements a simple 32-bit FNV-1a hash
+func fnv32(data string) uint32 {
+	const (
+		offset32 = 2166136261
+		prime32  = 16777619
+	)
+
+	hash := uint32(offset32)
+	for _, b := range []byte(data) {
+		hash ^= uint32(b)
+		hash *= prime32
+	}
+	return hash
 }

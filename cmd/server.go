@@ -92,7 +92,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}
 
 	// Initialize API server
-	apiServer := api.NewServer(searchEngine, indexerService, cfg)
+	apiServer := api.NewServer(searchEngine, indexerService, cfg, clusterManager)
 
 	// Setup HTTP server
 	server := &http.Server{

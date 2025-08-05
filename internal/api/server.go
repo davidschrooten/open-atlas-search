@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/davidschrooten/open-atlas-search/config"
+	"github.com/davidschrooten/open-atlas-search/internal/cluster"
 	"github.com/davidschrooten/open-atlas-search/internal/indexer"
 	"github.com/davidschrooten/open-atlas-search/internal/search"
 )
@@ -23,17 +24,19 @@ type ErrorResponse struct {
 
 // Server represents the API server
 type Server struct {
-	searchEngine   search.SearchEngine
-	indexerService *indexer.Service
-	config         *config.Config
+	searchEngine    search.SearchEngine
+	indexerService  *indexer.Service
+	clusterManager  *cluster.Manager
+	config          *config.Config
 }
 
 // NewServer creates a new API server
-func NewServer(searchEngine search.SearchEngine, indexerService *indexer.Service, cfg *config.Config) *Server {
+func NewServer(searchEngine search.SearchEngine, indexerService *indexer.Service, cfg *config.Config, clusterManager *cluster.Manager) *Server {
 	return &Server{
-		searchEngine:   searchEngine,
-		indexerService: indexerService,
-		config:         cfg,
+		searchEngine:    searchEngine,
+		indexerService:  indexerService,
+		clusterManager:  clusterManager,
+		config:          cfg,
 	}
 }
 
@@ -117,7 +120,24 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		From:   searchReq.From,
 	}
 
-	searchResult, err := s.searchEngine.Search(sReq)
+	// Determine if this index is sharded and use appropriate search method
+	var searchResult *search.SearchResult
+	var err error
+	
+	// Check if this index has multiple shards
+	if s.isIndexSharded(index) {
+		// Use sharded search
+		if engine, ok := s.searchEngine.(*search.Engine); ok {
+			searchResult, err = engine.SearchSharded(sReq)
+		} else {
+			// Fallback to regular search
+			searchResult, err = s.searchEngine.Search(sReq)
+		}
+	} else {
+		// Use regular search for non-sharded indexes
+		searchResult, err = s.searchEngine.Search(sReq)
+	}
+	
 	if err != nil {
 		log.Printf("Search error for index '%s': %v", index, err)
 		// Check if it's an index not found error
@@ -352,6 +372,16 @@ func (s *Server) indexExists(indexName string) bool {
 	for _, index := range indexes {
 		if index.Name == indexName {
 			return true
+		}
+	}
+	return false
+}
+
+// isIndexSharded checks if an index has multiple shards configured
+func (s *Server) isIndexSharded(indexName string) bool {
+	for _, indexCfg := range s.config.Indexes {
+		if indexCfg.Name == indexName {
+			return indexCfg.Distribution.Shards > 1
 		}
 	}
 	return false
