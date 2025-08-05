@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -76,8 +75,6 @@ func (e *Engine) CreateIndex(indexCfg config.IndexConfig) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	indexName := indexCfg.Name
-	
 	// In cluster mode with multiple shards, create separate indexes for each shard
 	if indexCfg.Distribution.Shards > 1 {
 		return e.createShardedIndex(indexCfg)
@@ -412,9 +409,9 @@ func (e *Engine) createMapping(def config.IndexDefinition) mapping.IndexMapping 
 	}
 
 	// Configure field mappings
-	for _, fieldCfg := range def.Mappings.Fields {
+	for fieldName, fieldCfg := range def.Mappings.Fields {
 		fieldMapping := e.createFieldMapping(fieldCfg)
-		indexMapping.DefaultMapping.AddFieldMappingsAt(fieldCfg.Name, fieldMapping)
+		indexMapping.DefaultMapping.AddFieldMappingsAt(fieldName, fieldMapping)
 	}
 
 	return indexMapping

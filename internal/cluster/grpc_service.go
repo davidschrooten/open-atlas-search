@@ -50,9 +50,9 @@ func (m *Manager) StartGRPCServer(port int) error {
 	}
 
 	grpcServer := grpc.NewServer()
-	clusterService := NewClusterServiceServer(m)
+	// clusterService := NewClusterServiceServer(m)
 	
-	// Register the service (we'll need to implement the registration manually)
+	// Register the service (commented out until protobuf is generated)
 	// RegisterClusterServiceServer(grpcServer, clusterService)
 	
 	log.Printf("Starting gRPC server on port %d", port)

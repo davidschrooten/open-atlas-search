@@ -2,20 +2,20 @@ package cluster
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/davidschrooten/open-atlas-search/config"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/serialx/hashring"
+	"google.golang.org/grpc"
 )
 
 // ShardInfo represents information about a shard
@@ -38,6 +38,8 @@ type Manager struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	isRunning   bool
+	grpcServer  *grpc.Server
+	transport   raft.Transport
 }
 
 // NewManager creates a new cluster manager
@@ -125,15 +127,18 @@ func (m *Manager) Stop() error {
 func (m *Manager) setupRaft() error {
 	raftConfig := raft.DefaultConfig()
 	raftConfig.LocalID = raft.ServerID(m.nodeID)
-	raftConfig.Logger = log.New(os.Stdout, "[RAFT] ", log.LstdFlags)
+	raftConfig.Logger = hclog.New(&hclog.LoggerOptions{
+		Name:  "raft",
+		Level: hclog.LevelFromString("DEBUG"),
+	})
 
 	// Create transport
-	addr, err := net.ResolveTCPAddr("tcp", m.config.Cluster.BindAddr)
+	advertise, err := net.ResolveTCPAddr("tcp", m.config.Cluster.BindAddr)
 	if err != nil {
-		return fmt.Errorf("failed to resolve bind address: %w", err)
+		return fmt.Errorf("failed to resolve advertise address: %w", err)
 	}
 
-	transport, err := raft.NewTCPTransport(m.config.Cluster.BindAddr, addr, 3, 10*time.Second, os.Stderr)
+	m.transport, err = raft.NewTCPTransport(m.config.Cluster.BindAddr, advertise, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("failed to create raft transport: %w", err)
 	}
@@ -158,7 +163,7 @@ func (m *Manager) setupRaft() error {
 	m.fsm = NewFSM()
 
 	// Create Raft
-	m.raft, err = raft.NewRaft(raftConfig, m.fsm, logStore, stableStore, snapshotStore, transport)
+	m.raft, err = raft.NewRaft(raftConfig, m.fsm, logStore, stableStore, snapshotStore, m.transport)
 	if err != nil {
 		return fmt.Errorf("failed to create raft: %w", err)
 	}
@@ -169,7 +174,7 @@ func (m *Manager) setupRaft() error {
 			Servers: []raft.Server{
 				{
 					ID:      raft.ServerID(m.nodeID),
-					Address: transport.LocalAddr(),
+					Address: m.transport.LocalAddr(),
 				},
 			},
 		}
@@ -336,4 +341,54 @@ func (m *Manager) IsLeader() bool {
 // GetNodeID returns the current node's ID
 func (m *Manager) GetNodeID() string {
 	return m.nodeID
+}
+
+// AddNode adds a new node to the cluster.
+func (m *Manager) AddNode(nodeID string, addr string) error {
+	if m.raft.State() != raft.Leader {
+		return fmt.Errorf("not the leader")
+	}
+
+	configFuture := m.raft.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		return fmt.Errorf("failed to get raft configuration: %w", err)
+	}
+
+	for _, srv := range configFuture.Configuration().Servers {
+		if srv.ID == raft.ServerID(nodeID) {
+			log.Printf("Node %s already part of cluster", nodeID)
+			return nil
+		}
+	}
+
+	addFuture := m.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
+	if err := addFuture.Error(); err != nil {
+		return fmt.Errorf("failed to add voter: %w", err)
+	}
+
+	log.Printf("Node %s added to cluster", nodeID)
+	return nil
+}
+
+// GetNodeIDs returns the IDs of all nodes in the cluster.
+func (m *Manager) GetNodeIDs() []string {
+	configFuture := m.raft.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		return []string{}
+	}
+
+	servers := configFuture.Configuration().Servers
+	ids := make([]string, len(servers))
+	for i, srv := range servers {
+		ids[i] = string(srv.ID)
+	}
+	return ids
+}
+
+// GetLocalAddr returns the local address of the Raft transport.
+func (m *Manager) GetLocalAddr() string {
+	if m.transport != nil {
+		return string(m.transport.LocalAddr())
+	}
+	return ""
 }

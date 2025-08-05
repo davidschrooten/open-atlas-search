@@ -66,6 +66,18 @@ func (m *mockSearchEngine) Close() error {
 	return nil
 }
 
+func (m *mockSearchEngine) GetIndexMapping(indexName string) (map[string]interface{}, error) {
+	return map[string]interface{}{
+		"name":   indexName,
+		"type":   "mock",
+		"status": "active",
+	}, nil
+}
+
+func (m *mockSearchEngine) IndexDocuments(indexName string, docs []search.DocumentBatch) error {
+	return nil
+}
+
 func TestServer_handleHealth(t *testing.T) {
 	server := &Server{}
 
@@ -251,6 +263,14 @@ func TestServer_handleSearch(t *testing.T) {
 
 	server := &Server{
 		searchEngine: mockEngine,
+		config:       &config.Config{},
+	}
+	mockEngine.indexes = []search.IndexInfo{
+		{
+			Name:     "test.index",
+			DocCount: 1,
+			Status:   "active",
+		},
 	}
 	router := server.Router()
 
@@ -266,7 +286,7 @@ func TestServer_handleSearch(t *testing.T) {
 	}
 
 	reqBody, _ := json.Marshal(searchReq)
-	req := httptest.NewRequest("GET", "/indexes/test.index/search", bytes.NewReader(reqBody))
+	req := httptest.NewRequest("POST", "/indexes/test.index/search", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -299,11 +319,22 @@ func TestServer_handleSearch_EmptyQuery(t *testing.T) {
 
 	server := &Server{
 		searchEngine: mockEngine,
+		config:       &config.Config{},
+	}
+	mockEngine.indexes = []search.IndexInfo{
+		{
+			Name:     "test.index",
+			DocCount: 1,
+			Status:   "active",
+		},
 	}
 	router := server.Router()
 
-	// Test with no body (empty query should default to match_all)
-	req := httptest.NewRequest("GET", "/indexes/test.index/search", nil)
+	// Test with empty query body
+	emptyReq := map[string]interface{}{}
+	reqBody, _ := json.Marshal(emptyReq)
+	req := httptest.NewRequest("POST", "/indexes/test.index/search", bytes.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
