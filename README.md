@@ -1,6 +1,7 @@
 # Open Atlas Search
 
-A drop-in replacement for MongoDB Atlas Search functionality built in Go. This application provides full-text search, faceted search, and real-time indexing capabilities for self-managed MongoDB deployments.
+A replacement for MongoDB Atlas Search functionality built in Go. This application provides full-text search, faceted search, and real-time indexing capabilities for self-managed MongoDB deployments.
+It does not require MongoDB change stream, it uses timestamps to track changes.
 
 ## API Routes
 
