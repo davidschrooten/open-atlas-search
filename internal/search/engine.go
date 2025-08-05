@@ -109,19 +109,13 @@ func (e *Engine) GetIndex(indexName string) (bleve.Index, bool) {
 	return index, exists
 }
 
-// SyncInfo represents sync status information
-type SyncInfo struct {
-	Status   string `json:"status"`
-	Progress string `json:"progress"`
-}
-
 // IndexInfo represents information about an index
 type IndexInfo struct {
-	Name     string     `json:"name"`
-	DocCount uint64     `json:"docCount"`
-	Status   string     `json:"status"`
-	LastSync *time.Time `json:"lastSync,omitempty"`
-	SyncInfo *SyncInfo  `json:"syncInfo,omitempty"`
+	Name         string     `json:"name"`
+	DocCount     uint64     `json:"docCount"`
+	Status       string     `json:"status"`
+	LastSync     *time.Time `json:"lastSync,omitempty"`
+	SyncProgress string     `json:"sync_progress,omitempty"`
 }
 
 // ListIndexes returns information about all indexes

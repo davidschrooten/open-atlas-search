@@ -1,17 +1,17 @@
 {
   "collections": {
     "production.tags": {
-      "lastPollTime": "2025-07-13T02:17:26.713+02:00",
-      "lastSyncTime": "2025-08-05T14:10:01.73518366+02:00",
-      "indexName": "production.tags.tags",
+      "lastPollTime": "0001-01-01T00:00:00Z",
+      "lastSyncTime": "2025-08-05T14:53:09.064003337+02:00",
+      "indexName": "",
       "collectionKey": "production.tags",
-      "timestampField": "updated_at",
-      "idField": "_id",
-      "documentsIndexed": 759385,
-      "syncStatus": "idle",
-      "progress": "100%",
+      "timestampField": "",
+      "idField": "",
+      "documentsIndexed": 681000,
+      "syncStatus": "in_progress",
+      "progress": "90.2%",
       "totalDocuments": 755385
     }
   },
-  "lastSaved": "2025-08-05T14:10:16.567662525+02:00"
+  "lastSaved": "2025-08-05T14:53:24.063272276+02:00"
 }

@@ -34,7 +34,7 @@ func NewServer(searchEngine search.SearchEngine, indexerService *indexer.Service
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 
-	r.Get("/indexes/{index}/search", s.handleSearch)
+	r.Post("/indexes/{index}/search", s.handleSearch)
 	r.Get("/indexes/{index}/status", s.handleStatus)
 	r.Get("/indexes", s.handleListIndexes)
 	r.Get("/health", s.handleHealth)
@@ -50,47 +50,29 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var searchReq search.SearchRequest
-	// For GET requests, we might not have a body, so handle that case
-	if r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&searchReq); err != nil {
-			http.Error(w, "invalid request payload", http.StatusBadRequest)
-			return
-		}
+	var searchReq struct {
+		Query  map[string]interface{}     `json:"query"`
+		Facets map[string]search.FacetRequest `json:"facets"`
+		Size   int                       `json:"size"`
+		From   int                       `json:"from"`
 	}
 
-	// Set index from URL parameter
-	searchReq.Index = index
-
-	// Set defaults for empty search (Elasticsearch-like behavior)
-	if searchReq.Query == nil {
-		searchReq.Query = map[string]interface{}{"match_all": map[string]interface{}{}}
+	// Parse the request body
+	if err := json.NewDecoder(r.Body).Decode(&searchReq); err != nil {
+		http.Error(w, "invalid request payload", http.StatusBadRequest)
+		return
 	}
 
-	// Set default pagination
-	if searchReq.Size == 0 {
-		searchReq.Size = 100 // Default page size
-	}
-	// Limit maximum size to 10,000
-	if searchReq.Size > 10000 {
-		searchReq.Size = 10000
-	}
-
-	// Ensure From is not negative
-	if searchReq.From < 0 {
-		searchReq.From = 0
+	// Prepare the search request for the search engine
+	sReq := search.SearchRequest{
+		Index:  index,
+		Query:  searchReq.Query,
+		Facets: searchReq.Facets,
+		Size:   searchReq.Size,
+		From:   searchReq.From,
 	}
 
-	// Limit total results (From + Size) to 10,000
-	if searchReq.From+searchReq.Size > 10000 {
-		searchReq.Size = 10000 - searchReq.From
-		if searchReq.Size <= 0 {
-			http.Error(w, "pagination exceeds maximum limit of 10,000 documents", http.StatusBadRequest)
-			return
-		}
-	}
-
-	searchResult, err := s.searchEngine.Search(searchReq)
+	searchResult, err := s.searchEngine.Search(sReq)
 	if err != nil {
 		log.Printf("Search error: %v", err)
 		http.Error(w, "search failed", http.StatusInternalServerError)
@@ -108,7 +90,7 @@ func (s *Server) handleListIndexes(w http.ResponseWriter, r *http.Request) {
 			return
 	}
 
-	// Get sync states from indexer service and enhance indexes with syncInfo
+// Get sync states from indexer service and update indexes status
 	if s.indexerService != nil {
 		syncStates := s.indexerService.GetSyncStates()
 		for i := range indexes {
@@ -120,19 +102,11 @@ func (s *Server) handleListIndexes(w http.ResponseWriter, r *http.Request) {
 			if len(parts) >= 2 {
 				collectionKey := fmt.Sprintf("%s.%s", parts[0], parts[1])
 				if syncState, exists := syncStates[collectionKey]; exists {
-					status := "idle"
-					progress := "not_available"
-					
-					if syncState.SyncStatus != "" {
-						status = string(syncState.SyncStatus)
-					}
-					if syncState.Progress != "" {
-						progress = syncState.Progress
-					}
-					
-					indexes[i].SyncInfo = &search.SyncInfo{
-						Status:   status,
-						Progress: progress,
+					if string(syncState.SyncStatus) == "in_progress" {
+						indexes[i].Status = "syncing"
+						indexes[i].SyncProgress = syncState.Progress
+					} else {
+						indexes[i].Status = "active"
 					}
 				}
 			}
@@ -171,6 +145,23 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if targetIndex == nil {
 		http.Error(w, "index not found", http.StatusNotFound)
 		return
+	}
+
+	// Apply sync state to the specific index
+	if s.indexerService != nil {
+		syncStates := s.indexerService.GetSyncStates()
+		parts := strings.Split(targetIndex.Name, ".")
+		if len(parts) >= 2 {
+			collectionKey := fmt.Sprintf("%s.%s", parts[0], parts[1])
+			if syncState, exists := syncStates[collectionKey]; exists {
+				if string(syncState.SyncStatus) == "in_progress" {
+					targetIndex.Status = "syncing"
+					targetIndex.SyncProgress = syncState.Progress
+				} else {
+					targetIndex.Status = "active"
+				}
+			}
+		}
 	}
 
 	// Create status response for the specific index
