@@ -17,6 +17,7 @@ type SearchEngine interface {
 
 	// Document operations
 	IndexDocument(indexName, docID string, doc map[string]interface{}) error
+	IndexDocuments(indexName string, docs []DocumentBatch) error // Bulk indexing
 	DeleteDocument(indexName, docID string) error
 
 	// Search operations
@@ -27,4 +28,10 @@ type SearchEngine interface {
 
 	// Lifecycle
 	Close() error
+}
+
+// DocumentBatch represents a document for bulk indexing
+type DocumentBatch struct {
+	ID  string                 `json:"id"`
+	Doc map[string]interface{} `json:"doc"`
 }

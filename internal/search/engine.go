@@ -260,6 +260,26 @@ func (e *Engine) IndexDocument(indexName, docID string, doc map[string]interface
 	return index.Index(docID, doc)
 }
 
+// IndexDocuments indexes multiple documents in a batch for better performance
+func (e *Engine) IndexDocuments(indexName string, docs []DocumentBatch) error {
+	e.mutex.RLock()
+	index, exists := e.indexes[indexName]
+	e.mutex.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("index %s not found", indexName)
+	}
+
+	// Create a batch for bulk indexing
+	batch := index.NewBatch()
+	for _, docBatch := range docs {
+		batch.Index(docBatch.ID, docBatch.Doc)
+	}
+
+	// Execute the batch
+	return index.Batch(batch)
+}
+
 // DeleteDocument removes a document from the index
 func (e *Engine) DeleteDocument(indexName, docID string) error {
 	e.mutex.RLock()

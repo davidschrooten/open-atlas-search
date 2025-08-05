@@ -2,16 +2,16 @@
   "collections": {
     "production.tags": {
       "lastPollTime": "2025-07-13T02:17:26.713+02:00",
-      "lastSyncTime": "2025-08-05T14:04:07.344610391+02:00",
+      "lastSyncTime": "2025-08-05T14:10:01.73518366+02:00",
       "indexName": "production.tags.tags",
       "collectionKey": "production.tags",
       "timestampField": "updated_at",
       "idField": "_id",
-      "documentsIndexed": 3000,
-      "syncStatus": "in_progress",
-      "progress": "0.4%",
+      "documentsIndexed": 759385,
+      "syncStatus": "idle",
+      "progress": "100%",
       "totalDocuments": 755385
     }
   },
-  "lastSaved": "2025-08-05T14:04:22.167168589+02:00"
+  "lastSaved": "2025-08-05T14:10:16.567662525+02:00"
 }

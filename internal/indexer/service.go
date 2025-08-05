@@ -25,6 +25,18 @@ type Service struct {
 	stopCh           chan struct{}
 	syncStateManager *syncstate.StateManager
 	saveStateCh      chan struct{} // Channel to trigger state saving
+	// Performance optimization fields
+	workQueue       chan IndexingJob
+	workerPool      []chan IndexingJob
+	bulkBuffer      map[string][]search.DocumentBatch
+	bulkBufferMutex sync.RWMutex
+}
+
+// IndexingJob represents a document indexing job
+type IndexingJob struct {
+	IndexName     string
+	CollectionKey string
+	Documents     []search.DocumentBatch
 }
 
 // NewService creates a new indexer service
@@ -418,8 +430,41 @@ func (s *Service) performPoll(ctx context.Context, indexCfg config.IndexConfig) 
 }
 
 
-// indexBatch indexes a batch of documents
+// indexBatch indexes a batch of documents using bulk operations for better performance
 func (s *Service) indexBatch(indexName string, batch []map[string]interface{}) {
+	if s.config.Search.BulkIndexing {
+		// Use bulk indexing for better performance
+		s.indexBatchBulk(indexName, batch)
+	} else {
+		// Use individual indexing for compatibility
+		s.indexBatchIndividual(indexName, batch)
+	}
+}
+
+// indexBatchBulk indexes documents using bulk operations for optimal performance
+func (s *Service) indexBatchBulk(indexName string, batch []map[string]interface{}) {
+	docs := make([]search.DocumentBatch, 0, len(batch))
+	for _, doc := range batch {
+		if idVal, ok := doc["_id"]; ok {
+			docID := fmt.Sprintf("%v", idVal)
+			docs = append(docs, search.DocumentBatch{
+				ID:  docID,
+				Doc: doc,
+			})
+		}
+	}
+
+	if len(docs) > 0 {
+		if err := s.searchEngine.IndexDocuments(indexName, docs); err != nil {
+			log.Printf("Failed to bulk index %d documents: %v", len(docs), err)
+			// Fallback to individual indexing on error
+			s.indexBatchIndividual(indexName, batch)
+		}
+	}
+}
+
+// indexBatchIndividual indexes documents one by one (fallback method)
+func (s *Service) indexBatchIndividual(indexName string, batch []map[string]interface{}) {
 	for _, doc := range batch {
 		if idVal, ok := doc["_id"]; ok {
 			docID := fmt.Sprintf("%v", idVal)

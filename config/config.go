@@ -36,6 +36,11 @@ type SearchConfig struct {
 	BatchSize     int    `mapstructure:"batch_size"`
 	FlushInterval int    `mapstructure:"flush_interval"` // in seconds
 	SyncStatePath string `mapstructure:"sync_state_path"` // Path to store sync state for persistence
+	// Performance optimization settings
+	WorkerCount     int  `mapstructure:"worker_count"`      // Number of concurrent indexing workers
+	BulkIndexing    bool `mapstructure:"bulk_indexing"`     // Enable bulk indexing for better performance
+	PrefetchCount   int  `mapstructure:"prefetch_count"`    // Number of documents to prefetch from MongoDB
+	IndexBufferSize int  `mapstructure:"index_buffer_size"` // Buffer size for index operations
 }
 
 // IndexConfig represents a search index configuration similar to MongoDB Atlas Search
@@ -112,6 +117,11 @@ func setDefaults() {
 	viper.SetDefault("search.batch_size", 1000)
 	viper.SetDefault("search.flush_interval", 30)
 	viper.SetDefault("search.sync_state_path", "./sync_state.json")
+	// Performance optimization defaults
+	viper.SetDefault("search.worker_count", 4)        // 4 concurrent workers
+	viper.SetDefault("search.bulk_indexing", true)    // Enable bulk indexing
+	viper.SetDefault("search.prefetch_count", 5000)   // Prefetch 5000 documents
+	viper.SetDefault("search.index_buffer_size", 100) // Buffer 100 operations
 }
 
 // GetMongoURI returns the complete MongoDB connection URI

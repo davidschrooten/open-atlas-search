@@ -70,6 +70,10 @@ func (c *Client) FindDocuments(collection string, filter bson.M, limit int64) (*
 	if limit > 0 {
 		opts.SetLimit(limit)
 	}
+	
+	// Optimize cursor for bulk operations
+	opts.SetBatchSize(1000) // Fetch more documents per round trip
+	opts.SetNoCursorTimeout(true) // Prevent cursor timeout for large datasets
 
 	cursor, err := c.Collection(collection).Find(ctx, filter, opts)
 	if err != nil {
@@ -102,6 +106,10 @@ func (c *Client) FindDocumentsSince(collection, timestampField string, since tim
 	if limit > 0 {
 		opts.SetLimit(limit)
 	}
+	
+	// Optimize cursor for incremental sync operations
+	opts.SetBatchSize(500) // Smaller batch size for incremental updates
+	opts.SetNoCursorTimeout(true)
 
 	cursor, err := c.Collection(collection).Find(ctx, filter, opts)
 	if err != nil {
