@@ -4,7 +4,7 @@ server:
 
 mongodb:
   uri: "mongodb://localhost:27017"
-  database: "myapp"
+  database: "production"
   username: ""
   password: ""
   timeout: 30
@@ -13,58 +13,31 @@ search:
   index_path: "./indexes"
   batch_size: 1000
   flush_interval: 30
+  sync_state_path: "./sync_state.json"
 
 indexes:
-  - name: "default"
-    database: "myapp"
-    collection: "products"
+  - name: "tags"
+    database: "production"
+    collection: "tags"
     definition:
       mappings:
         dynamic: true
         fields:
-          name:
+          - name: "tag_name_search"
+            field: "tag_name"
             type: "text"
             analyzer: "standard"
-            facet: false
-          description:
-            type: "text"
-            analyzer: "standard"
-          category:
-            type: "keyword" 
+          - name: "tag_name_keyword"
+            field: "tag_name"
+            type: "keyword"
+          - name: "source"
+            field: "source"
+            type: "keyword"
             facet: true
-          price:
+          - name: "created_at"
+            field: "created_at"
+            type: "date"
+          - name: "user_count"
+            field: "user_count"
             type: "numeric"
-            facet: true
-          tags:
-            type: "text"
-            analyzer: "keyword"
-            facet: true
-          created_at:
-            type: "date"
-            facet: false
-          in_stock:
-            type: "boolean"
-            facet: true
-
-  - name: "search"
-    database: "myapp"
-    collection: "articles"
-    definition:
-      mappings:
-        dynamic: false
-        fields:
-          title:
-            type: "text"
-            analyzer: "standard"
-          content:
-            type: "text" 
-            analyzer: "standard"
-          author:
-            type: "keyword"
-            facet: true
-          published_date:
-            type: "date"
-            facet: true
-          status:
-            type: "keyword"
             facet: true

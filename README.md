@@ -2,6 +2,30 @@
 
 A drop-in replacement for MongoDB Atlas Search functionality built in Go. This application provides full-text search, faceted search, and real-time indexing capabilities for self-managed MongoDB deployments.
 
+## API Routes
+
+The API has been designed to closely match MongoDB Atlas Search. Below are the main routes:
+
+### POST /indexes/{index}/search
+- **Purpose**: Search within a specific index
+- **Parameters**: `{index}`: Name of the index
+- **Request Body**: JSON search request with query, facets, size, and from parameters
+
+### GET /indexes/{index}/status
+- **Purpose**: Get status information for a specific index
+
+### GET /indexes/{index}/mapping
+- **Purpose**: Retrieve the mapping of a specific index
+
+### GET /indexes
+- **Purpose**: List all available indexes
+
+### GET /health
+- **Purpose**: Basic health check
+
+### GET /ready
+- **Purpose**: Readiness probe for comprehensive startup verification
+
 ## Features
 
 - **Full-text Search**: Powered by Bleve search engine
@@ -97,13 +121,12 @@ Or with custom config:
 
 ### Search API
 
-Perform searches using HTTP POST to `/search`:
+Perform searches using HTTP POST to `/indexes/{index}/search`:
 
 ```bash
-curl -X POST http://localhost:8080/search \
+curl -X POST http://localhost:8080/indexes/default/search \
   -H "Content-Type: application/json" \
   -d '{
-    "index": "myapp_products_default",
     "query": {
       "text": {
         "query": "laptop",
@@ -191,7 +214,21 @@ Request facets alongside search results:
 }
 ```
 
-## Environment Variables
+## Persistent Sync State
+
+The sync state is saved to disk, allowing the application to resume indexing from the last checkpoint after restarts or crashes.
+
+### Configuration
+
+```yaml
+search:
+  index_path: "./indexes"
+  sync_state_path: "./sync_state.json"
+```
+
+### Sync State File Format
+
+The sync state file stores the last poll timestamp for collections, enabling seamless recovery.
 
 You can override configuration using environment variables with the `OAS_` prefix:
 
@@ -263,12 +300,79 @@ spec:
           claimName: open-atlas-search-indexes
 ```
 
-## Performance Tuning
+## Configuration Options
+
+```yaml
+search:
+  index_path: "./indexes"
+  batch_size: 1000
+  flush_interval: 30
+  sync_state_path: "./sync_state.json"
+  worker_count: 4          # Number of concurrent workers
+  bulk_indexing: true      # Enable bulk indexing
+```
+
+## Performance Optimizations
+
+### Optimizations Implemented
+
+1. **Bulk Indexing**: Batched operations for increased speed.
+2. **Cursor Optimization**: Enhanced MongoDB cursor settings.
+3. **Configurable Batch Sizes**: Adjustable sizes per operation.
+4. **Enhanced Progress Tracking**: Real-time sync tracking.
+
+### Performance Tuning Tips
 
 - Adjust `batch_size` for bulk indexing performance
 - Set `flush_interval` based on your consistency requirements
 - Use appropriate field types (keyword vs text) for better performance
 - Adjust polling interval based on your real-time requirements
+
+## Health Checks
+
+### Health and Readiness Probes
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+```
+
+## Status Monitoring
+
+The status endpoint provides detailed information about synchronization across all indexes:
+
+### Example Response
+
+```json
+{
+  "service": "open-atlas-search",
+  "status": "running",
+  "indexes": [
+    {
+      "name": "products", 
+      "docCount": 1500,
+      "status": "active",
+      "lastSync": "2025-07-31T18:57:24Z"
+    }
+  ]
+}
+```
 
 ## Contributing
 
