@@ -1,0 +1,34 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  username: "testuser"  # Authentication enabled
+  password: "testpass"  # Authentication enabled
+
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "testdb"
+  timeout: 30
+
+search:
+  index_path: "./test-indexes"
+  batch_size: 100
+  flush_interval: 30
+  sync_state_path: "./test-sync_state.json"
+
+cluster:
+  enabled: false
+
+indexes:
+  - name: "test-index"
+    database: "testdb"
+    collection: "testcol"
+    definition:
+      mappings:
+        dynamic: true
+        fields:
+          - name: "title"
+            field: "title"
+            type: "text"
+          - name: "content"
+            field: "content"
+            type: "text"

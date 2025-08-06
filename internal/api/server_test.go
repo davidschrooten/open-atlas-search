@@ -403,3 +403,182 @@ func TestServer_handleStatus_WithIndex(t *testing.T) {
 		t.Errorf("Expected index name 'test.collection.index', got '%v'", index["name"])
 	}
 }
+
+func TestServer_Authentication_Disabled(t *testing.T) {
+	mockEngine := &mockSearchEngine{
+		indexes: []search.IndexInfo{
+			{
+				Name:     "test.index",
+				DocCount: 1,
+				Status:   "active",
+			},
+		},
+	}
+
+	// Server without auth config (username and password empty)
+	server := &Server{
+		searchEngine: mockEngine,
+		config: &config.Config{
+			Server: config.ServerConfig{
+				Host:     "0.0.0.0",
+				Port:     8080,
+				Username: "",
+				Password: "",
+			},
+		},
+	}
+	router := server.Router()
+
+	// Request without auth header should succeed when auth is disabled
+	req := httptest.NewRequest("GET", "/indexes", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status code %d when auth is disabled, got %d", http.StatusOK, w.Code)
+	}
+}
+
+func TestServer_Authentication_Enabled_NoAuth(t *testing.T) {
+	mockEngine := &mockSearchEngine{
+		indexes: []search.IndexInfo{
+			{
+				Name:     "test.index",
+				DocCount: 1,
+				Status:   "active",
+			},
+		},
+	}
+
+	// Server with auth config
+	server := &Server{
+		searchEngine: mockEngine,
+		config: &config.Config{
+			Server: config.ServerConfig{
+				Host:     "0.0.0.0",
+				Port:     8080,
+				Username: "admin",
+				Password: "secret",
+			},
+		},
+	}
+	router := server.Router()
+
+	// Request without auth header should fail when auth is enabled
+	req := httptest.NewRequest("GET", "/indexes", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected status code %d when auth is missing, got %d", http.StatusUnauthorized, w.Code)
+	}
+
+	// Check WWW-Authenticate header
+	if auth := w.Header().Get("WWW-Authenticate"); auth == "" {
+		t.Error("Expected WWW-Authenticate header to be set")
+	}
+}
+
+func TestServer_Authentication_Enabled_ValidAuth(t *testing.T) {
+	mockEngine := &mockSearchEngine{
+		indexes: []search.IndexInfo{
+			{
+				Name:     "test.index",
+				DocCount: 1,
+				Status:   "active",
+			},
+		},
+	}
+
+	// Server with auth config
+	server := &Server{
+		searchEngine: mockEngine,
+		config: &config.Config{
+			Server: config.ServerConfig{
+				Host:     "0.0.0.0",
+				Port:     8080,
+				Username: "admin",
+				Password: "secret",
+			},
+		},
+	}
+	router := server.Router()
+
+	// Request with valid auth header should succeed
+	req := httptest.NewRequest("GET", "/indexes", nil)
+	req.SetBasicAuth("admin", "secret")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status code %d with valid auth, got %d", http.StatusOK, w.Code)
+	}
+}
+
+func TestServer_Authentication_Enabled_InvalidAuth(t *testing.T) {
+	mockEngine := &mockSearchEngine{
+		indexes: []search.IndexInfo{
+			{
+				Name:     "test.index",
+				DocCount: 1,
+				Status:   "active",
+			},
+		},
+	}
+
+	// Server with auth config
+	server := &Server{
+		searchEngine: mockEngine,
+		config: &config.Config{
+			Server: config.ServerConfig{
+				Host:     "0.0.0.0",
+				Port:     8080,
+				Username: "admin",
+				Password: "secret",
+			},
+		},
+	}
+	router := server.Router()
+
+	// Request with invalid auth header should fail
+	req := httptest.NewRequest("GET", "/indexes", nil)
+	req.SetBasicAuth("admin", "wrongpassword")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected status code %d with invalid auth, got %d", http.StatusUnauthorized, w.Code)
+	}
+}
+
+func TestServer_HealthEndpoint_AlwaysAccessible(t *testing.T) {
+	mockEngine := &mockSearchEngine{}
+
+	// Server with auth config
+	server := &Server{
+		searchEngine: mockEngine,
+		config: &config.Config{
+			Server: config.ServerConfig{
+				Host:     "0.0.0.0",
+				Port:     8080,
+				Username: "admin",
+				Password: "secret",
+			},
+		},
+	}
+	router := server.Router()
+
+	// Health endpoint should be accessible without auth
+	req := httptest.NewRequest("GET", "/health", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected health endpoint to be accessible without auth, got status %d", w.Code)
+	}
+}

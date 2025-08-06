@@ -1,6 +1,8 @@
 server:
   host: "0.0.0.0"
   port: 8080
+  username: "admin"  # Username for API authentication (optional)
+  password: "secret" # Password for API authentication (optional)
 
 mongodb:
   uri: "mongodb://localhost:27017"

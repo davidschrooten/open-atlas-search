@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -44,16 +46,26 @@ func NewServer(searchEngine search.SearchEngine, indexerService *indexer.Service
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 
-	// Middleware
+	// Global middleware
 	r.Use(s.corsMiddleware)
 	r.Use(s.methodNotAllowedMiddleware)
 
-	r.Post("/indexes/{index}/search", s.handleSearch)
-	r.Get("/indexes/{index}/status", s.handleStatus)
-	r.Get("/indexes/{index}/mapping", s.handleMapping)
-	r.Get("/indexes", s.handleListIndexes)
+	// Public endpoints (no authentication required)
 	r.Get("/health", s.handleHealth)
 	r.Get("/ready", s.handleReady)
+
+	// Protected endpoints (authentication required if configured)
+	r.Group(func(r chi.Router) {
+		// Apply authentication middleware if credentials are configured
+		if s.isAuthenticationEnabled() {
+			r.Use(s.basicAuthMiddleware)
+		}
+
+		r.Post("/indexes/{index}/search", s.handleSearch)
+		r.Get("/indexes/{index}/status", s.handleStatus)
+		r.Get("/indexes/{index}/mapping", s.handleMapping)
+		r.Get("/indexes", s.handleListIndexes)
+	})
 
 	return r
 }
@@ -277,7 +289,7 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If we have configured indexes, verify at least one exists
-	if len(s.config.Indexes) > 0 {
+	if s.config != nil && len(s.config.Indexes) > 0 {
 		indexes, err := s.searchEngine.ListIndexes()
 		if err != nil {
 			log.Printf("Readiness check failed - error listing indexes: %v", err)
@@ -329,6 +341,9 @@ func (s *Server) handleMapping(w http.ResponseWriter, r *http.Request) {
 
 // findCollectionKeyForIndex finds the collection key for a given index name
 func (s *Server) findCollectionKeyForIndex(indexName string) string {
+	if s.config == nil {
+		return ""
+	}
 	for _, indexCfg := range s.config.Indexes {
 		if indexCfg.Name == indexName {
 			return fmt.Sprintf("%s.%s", indexCfg.Database, indexCfg.Collection)
@@ -379,6 +394,9 @@ func (s *Server) indexExists(indexName string) bool {
 
 // isIndexSharded checks if an index has multiple shards configured
 func (s *Server) isIndexSharded(indexName string) bool {
+	if s.config == nil {
+		return false
+	}
 	for _, indexCfg := range s.config.Indexes {
 		if indexCfg.Name == indexName {
 			return indexCfg.Distribution.Shards > 1
@@ -409,4 +427,66 @@ func (s *Server) methodNotAllowedMiddleware(next http.Handler) http.Handler {
 		// Let chi handle the routing first
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isAuthenticationEnabled checks if authentication is configured
+func (s *Server) isAuthenticationEnabled() bool {
+	if s.config == nil {
+		return false
+	}
+	return strings.TrimSpace(s.config.Server.Username) != "" && strings.TrimSpace(s.config.Server.Password) != ""
+}
+
+// basicAuthMiddleware provides HTTP Basic Authentication
+func (s *Server) basicAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get the Authorization header
+		auth := r.Header.Get("Authorization")
+		if auth == "" {
+			s.authenticationFailed(w)
+			return
+		}
+
+		// Check if it starts with "Basic "
+		if !strings.HasPrefix(auth, "Basic ") {
+			s.authenticationFailed(w)
+			return
+		}
+
+		// Decode the base64 encoded credentials
+		credentials, err := base64.StdEncoding.DecodeString(auth[6:])
+		if err != nil {
+			log.Printf("Failed to decode basic auth credentials: %v", err)
+			s.authenticationFailed(w)
+			return
+		}
+
+		// Split username:password
+		credsParts := strings.SplitN(string(credentials), ":", 2)
+		if len(credsParts) != 2 {
+			s.authenticationFailed(w)
+			return
+		}
+
+		username, password := credsParts[0], credsParts[1]
+
+		// Use constant-time comparison to prevent timing attacks
+		usernameMatch := subtle.ConstantTimeCompare([]byte(username), []byte(s.config.Server.Username)) == 1
+		passwordMatch := subtle.ConstantTimeCompare([]byte(password), []byte(s.config.Server.Password)) == 1
+
+		if !usernameMatch || !passwordMatch {
+			log.Printf("Authentication failed for user: %s", username)
+			s.authenticationFailed(w)
+			return
+		}
+
+		// Authentication successful, proceed to the next handler
+		next.ServeHTTP(w, r)
+	})
+}
+
+// authenticationFailed sends an authentication failed response
+func (s *Server) authenticationFailed(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", `Basic realm="Open Atlas Search API"`)
+	s.errorResponse(w, "authentication_required", "Authentication required", http.StatusUnauthorized)
 }
