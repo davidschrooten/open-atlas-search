@@ -2,7 +2,7 @@ apiVersion: v2
 name: open-atlas-search
 description: A Helm chart for Open Atlas Search - MongoDB full-text search service with standalone and cluster deployment modes
 type: application
-version: 0.2.0
+version: 0.2.1
 appVersion: "1.0.0"
 keywords:
   - search
