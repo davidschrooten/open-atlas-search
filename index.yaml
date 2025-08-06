@@ -1,0 +1,24 @@
+apiVersion: v1
+entries:
+  open-atlas-search:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2025-08-06T13:12:01.731089378Z"
+    description: A Helm chart for Open Atlas Search - MongoDB full-text search service
+      with standalone and cluster deployment modes
+    digest: 895a55d1a893d0451b2c84280494979ae30f23048b1ddafca9f7e6b570a0cb20
+    home: https://github.com/your-org/open-atlas-search
+    keywords:
+    - search
+    - mongodb
+    - fulltext
+    - atlas
+    maintainers:
+    - email: dbschr@gmail.com
+      name: David Schrooten
+    name: open-atlas-search
+    type: application
+    urls:
+    - https://davidschrooten.github.io/open-atlas-search/open-atlas-search-0.2.0.tgz
+    version: 0.2.0
+generated: "2025-08-06T13:12:01.730256287Z"
