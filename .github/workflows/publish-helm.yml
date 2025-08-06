@@ -7,6 +7,12 @@ on:
     paths:
       - 'helm/**'
   workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force release even if version exists'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   lint-and-test:
@@ -25,8 +31,17 @@ jobs:
       - name: Lint Helm chart
         run: helm lint ./helm
 
-      - name: Template Helm chart
-        run: helm template test-release ./helm
+      - name: Template Helm chart (Standalone)
+        run: |
+          helm template test-standalone ./helm \
+            --set deploymentMode=standalone \
+            --set image.repository=test/open-atlas-search
+      
+      - name: Template Helm chart (Cluster)
+        run: |
+          helm template test-cluster ./helm \
+            --set deploymentMode=cluster \
+            --set image.repository=test/open-atlas-search
 
   publish:
     runs-on: ubuntu-latest
@@ -51,12 +66,55 @@ jobs:
         with:
           version: v3.15.2
 
+      - name: Get chart version
+        id: chart_version
+        run: |
+          VERSION=$(helm show chart ./helm | grep '^version:' | cut -d' ' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Chart version: $VERSION"
+
+      - name: Check if release exists
+        id: release_check
+        run: |
+          if gh release view "open-atlas-search-${{ steps.chart_version.outputs.version }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release already exists for version ${{ steps.chart_version.outputs.version }}"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No existing release for version ${{ steps.chart_version.outputs.version }}"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
         with:
           charts_dir: helm
-          skip_existing: true
+          skip_existing: ${{ inputs.force_release != 'true' }}
+          config: .github/cr.yaml
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           CR_PAGES_BRANCH: gh-pages
+
+      - name: Update repository index
+        run: |
+          echo "📦 Helm repository updated!"
+          echo "🌐 Repository URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          echo "📋 Chart version: ${{ steps.chart_version.outputs.version }}"
+          echo ""
+          echo "🚀 Getting Started:"
+          echo "1. Add the repository:"
+          echo "   helm repo add open-atlas-search https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          echo ""
+          echo "2. Update your repositories:"
+          echo "   helm repo update"
+          echo ""
+          echo "3. Install the chart:"
+          echo "   # Standalone mode:"
+          echo "   helm install my-search open-atlas-search/open-atlas-search --set deploymentMode=standalone"
+          echo ""
+          echo "   # Cluster mode:"
+          echo "   helm install my-search open-atlas-search/open-atlas-search --set deploymentMode=cluster"
+          echo ""
+          echo "📚 Documentation: https://github.com/${{ github.repository }}/blob/master/helm/README.md"
 

@@ -59,6 +59,43 @@ The API has been designed to match MongoDB Atlas Search functionality. Below are
 
 ## Installation
 
+### Kubernetes/Helm (Recommended)
+
+The easiest way to deploy Open Atlas Search is using our Helm chart:
+
+```bash
+# Add the Helm repository
+helm repo add open-atlas-search https://davidschrooten.github.io/open-atlas-search
+helm repo update
+
+# Install in standalone mode
+helm install my-search open-atlas-search/open-atlas-search \
+  --set deploymentMode=standalone \
+  --set image.repository=davidschrooten/open-atlas-search \
+  --set config.mongodb.uri=mongodb://your-mongodb:27017
+
+# Or install in cluster mode
+helm install my-search-cluster open-atlas-search/open-atlas-search \
+  --set deploymentMode=cluster \
+  --set statefulSet.replicas=3 \
+  --set cluster.bootstrap=true
+```
+
+See the [Helm Chart README](./helm/README.md) for detailed configuration options.
+
+### Docker
+
+```bash
+docker run -d \
+  --name open-atlas-search \
+  -p 3000:3000 \
+  -v /path/to/config.yaml:/etc/config/config.yaml \
+  -v /path/to/data:/data \
+  davidschrooten/open-atlas-search:latest
+```
+
+### From Source
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/davidschrooten/open-atlas-search.git

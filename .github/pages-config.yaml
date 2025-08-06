@@ -1,0 +1,8 @@
+# GitHub Pages configuration for Helm repository
+name: Open Atlas Search Helm Repository
+description: Helm charts for Open Atlas Search - MongoDB full-text search service
+url: https://davidschrooten.github.io/open-atlas-search
+maintainers:
+  - name: David Schrooten
+    email: dbschr@gmail.com
+generated: "{{ .Date }}"
