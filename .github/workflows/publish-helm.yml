@@ -1,12 +1,12 @@
-name: package-helm-chart
+name: Package Helm Chart
 
 on:
   push:
     branches:
       - master
     paths:
-      - 'helm/**'
-  
+      - "helm/**"
+
   workflow_dispatch:
 
 jobs:
@@ -29,7 +29,7 @@ jobs:
           helm template test-standalone ./helm \
             --set deploymentMode=standalone \
             --set image.repository=test/open-atlas-search
-      
+
       - name: Template Helm chart (Cluster)
         run: |
           helm template test-cluster ./helm \
@@ -74,7 +74,7 @@ jobs:
         run: |
           helm package ./helm --version ${{ steps.set-variables.outputs.VERSION }}
           helm push ./open-atlas-search-${{ steps.set-variables.outputs.VERSION }}.tgz oci://${{ steps.set-variables.outputs.REPOSITORY }}/charts
-  
+
   publish-helm-chart:
     needs: lint-and-test
     permissions:
@@ -84,7 +84,7 @@ jobs:
       actions: read
       deployments: read
       pull-requests: read
-      
+
     runs-on: ubuntu-latest
 
     steps:
@@ -120,4 +120,3 @@ jobs:
           echo "   helm install my-search oci://ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')/charts/open-atlas-search"
           echo ""
           echo "📚 Documentation: https://github.com/${{ github.repository }}/blob/master/helm/README.md"
-
