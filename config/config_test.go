@@ -40,10 +40,10 @@ indexes:
       mappings:
         dynamic: true
         fields:
-          title:
+          - name: "title"
             type: "text"
             analyzer: "standard"
-          price:
+          - name: "price"
             type: "numeric"
 `
 	
@@ -124,17 +124,39 @@ indexes:
 		t.Errorf("Expected 2 field mappings, got %d", len(index.Definition.Mappings.Fields))
 	}
 	
-	titleField := index.Definition.Mappings.Fields["title"]
-	if titleField.Type != "text" {
-		t.Errorf("Expected title field type 'text', got '%s'", titleField.Type)
+	// Find title field
+	var titleField *FieldConfig
+	for i := range index.Definition.Mappings.Fields {
+		if index.Definition.Mappings.Fields[i].Name == "title" {
+			titleField = &index.Definition.Mappings.Fields[i]
+			break
+		}
 	}
-	if titleField.Analyzer != "standard" {
-		t.Errorf("Expected title field analyzer 'standard', got '%s'", titleField.Analyzer)
+	if titleField == nil {
+		t.Error("Title field not found")
+	} else {
+		if titleField.Type != "text" {
+			t.Errorf("Expected title field type 'text', got '%s'", titleField.Type)
+		}
+		if titleField.Analyzer != "standard" {
+			t.Errorf("Expected title field analyzer 'standard', got '%s'", titleField.Analyzer)
+		}
 	}
 	
-	priceField := index.Definition.Mappings.Fields["price"]
-	if priceField.Type != "numeric" {
-		t.Errorf("Expected price field type 'numeric', got '%s'", priceField.Type)
+	// Find price field
+	var priceField *FieldConfig
+	for i := range index.Definition.Mappings.Fields {
+		if index.Definition.Mappings.Fields[i].Name == "price" {
+			priceField = &index.Definition.Mappings.Fields[i]
+			break
+		}
+	}
+	if priceField == nil {
+		t.Error("Price field not found")
+	} else {
+		if priceField.Type != "numeric" {
+			t.Errorf("Expected price field type 'numeric', got '%s'", priceField.Type)
+		}
 	}
 }
 

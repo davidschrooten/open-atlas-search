@@ -9,36 +9,36 @@ import (
 	"google.golang.org/grpc"
 )
 
-// ClusterServiceServer implements the gRPC cluster service
-type ClusterServiceServer struct {
+// ServiceServer implements the gRPC cluster service
+type ServiceServer struct {
 	manager *Manager
 }
 
-// NewClusterServiceServer creates a new gRPC service server
-func NewClusterServiceServer(manager *Manager) *ClusterServiceServer {
-	return &ClusterServiceServer{
+// NewServiceServer creates a new gRPC service server
+func NewServiceServer(manager *Manager) *ServiceServer {
+	return &ServiceServer{
 		manager: manager,
 	}
 }
 
 // JoinCluster handles requests from nodes wanting to join the cluster
-func (s *ClusterServiceServer) JoinCluster(ctx context.Context, req *JoinRequest) (*JoinResponse, error) {
-	log.Printf("Node %s requesting to join cluster from %s", req.NodeId, req.Address)
+func (s *ServiceServer) JoinCluster(ctx context.Context, req *JoinRequest) (*JoinResponse, error) {
+	log.Printf("Node %s requesting to join cluster from %s", req.NodeID, req.Address)
 	
 	// Add the node to the cluster (simplified implementation)
-	s.manager.AddNode(req.NodeId, req.Address)
+	s.manager.AddNode(req.NodeID, req.Address)
 	
 	return &JoinResponse{
-		Message: fmt.Sprintf("Node %s successfully joined the cluster", req.NodeId),
+		Message: fmt.Sprintf("Node %s successfully joined the cluster", req.NodeID),
 	}, nil
 }
 
 // GetClusterState returns the current cluster state
-func (s *ClusterServiceServer) GetClusterState(ctx context.Context, req *StateRequest) (*StateResponse, error) {
-	nodeIds := s.manager.GetNodeIDs()
+func (s *ServiceServer) GetClusterState(ctx context.Context, req *StateRequest) (*StateResponse, error) {
+	nodeIDs := s.manager.GetNodeIDs()
 	
 	return &StateResponse{
-		NodeIds: nodeIds,
+		NodeIDs: nodeIDs,
 	}, nil
 }
 
@@ -50,7 +50,7 @@ func (m *Manager) StartGRPCServer(port int) error {
 	}
 
 	grpcServer := grpc.NewServer()
-	// clusterService := NewClusterServiceServer(m)
+	// clusterService := NewServiceServer(m)
 	
 	// Register the service (commented out until protobuf is generated)
 	// RegisterClusterServiceServer(grpcServer, clusterService)
@@ -76,7 +76,7 @@ func (m *Manager) StopGRPCServer() {
 
 // JoinRequest represents a request to join the cluster
 type JoinRequest struct {
-	NodeId  string `json:"node_id"`
+	NodeID  string `json:"node_id"`
 	Address string `json:"address"`
 }
 
@@ -90,5 +90,5 @@ type StateRequest struct{}
 
 // StateResponse represents cluster state information
 type StateResponse struct {
-	NodeIds []string `json:"node_ids"`
+	NodeIDs []string `json:"node_ids"`
 }

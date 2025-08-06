@@ -25,11 +25,6 @@ type Service struct {
 	stopCh           chan struct{}
 	syncStateManager *syncstate.StateManager
 	saveStateCh      chan struct{} // Channel to trigger state saving
-	// Performance optimization fields
-	workQueue       chan IndexingJob
-	workerPool      []chan IndexingJob
-	bulkBuffer      map[string][]search.DocumentBatch
-	bulkBufferMutex sync.RWMutex
 }
 
 // IndexingJob represents a document indexing job
@@ -170,7 +165,7 @@ func (s *Service) performInitialIndexing(ctx context.Context, indexCfg config.In
 	collectionKey := fmt.Sprintf("%s.%s", indexCfg.Database, indexCfg.Collection)
 
 	// Set initial sync status to in_progress
-	s.syncStateManager.SetSyncStatus(collectionKey, syncstate.SyncStatusInProgress)
+	s.syncStateManager.SetSyncStatus(collectionKey, syncstate.StatusInProgress)
 	s.syncStateManager.SetProgress(collectionKey, "0%")
 
 	// Get total document count for progress calculation
@@ -187,7 +182,7 @@ func (s *Service) performInitialIndexing(ctx context.Context, indexCfg config.In
 	cursor, err := s.mongoClient.FindDocuments(indexCfg.Collection, bson.M{}, 0)
 	if err != nil {
 		log.Printf("Failed to get documents for initial indexing: %v", err)
-		s.syncStateManager.SetSyncStatus(collectionKey, syncstate.SyncStatusIdle)
+		s.syncStateManager.SetSyncStatus(collectionKey, syncstate.StatusIdle)
 		return
 	}
 	defer cursor.Close(ctx)
@@ -243,7 +238,7 @@ func (s *Service) performInitialIndexing(ctx context.Context, indexCfg config.In
 		indexCfg.Database, indexCfg.Collection, count)
 
 	// Set final status to idle after completion
-	s.syncStateManager.SetSyncStatus(collectionKey, syncstate.SyncStatusIdle)
+	s.syncStateManager.SetSyncStatus(collectionKey, syncstate.StatusIdle)
 	s.syncStateManager.SetProgress(collectionKey, "100%")
 
 	// Update the last sync time for the index after initial indexing

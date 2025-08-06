@@ -9,12 +9,15 @@ import (
 	"time"
 )
 
-// SyncStatus represents the current sync status
-type SyncStatus string
+// Status represents the current sync status
+type Status string
 
+// Sync status constants
 const (
-	SyncStatusIdle       SyncStatus = "idle"
-	SyncStatusInProgress SyncStatus = "in_progress"
+	// StatusIdle indicates the sync is idle/complete
+	StatusIdle Status = "idle"
+	// StatusInProgress indicates sync is currently in progress
+	StatusInProgress Status = "in_progress"
 )
 
 // CollectionState represents the sync state for a single collection
@@ -26,7 +29,7 @@ type CollectionState struct {
 	TimestampField   string     `json:"timestampField"`
 	IDField          string     `json:"idField"`
 	DocumentsIndexed int64      `json:"documentsIndexed"`
-	SyncStatus       SyncStatus `json:"syncStatus"`
+	SyncStatus       Status `json:"syncStatus"`
 	Progress         string     `json:"progress"`
 	TotalDocuments   int64      `json:"totalDocuments,omitempty"`
 }
@@ -195,7 +198,7 @@ func (sm *StateManager) RemoveCollectionState(collectionKey string) {
 }
 
 // SetSyncStatus updates the sync status for a collection
-func (sm *StateManager) SetSyncStatus(collectionKey string, status SyncStatus) {
+func (sm *StateManager) SetSyncStatus(collectionKey string, status Status) {
 	sm.mutex.Lock()
 	defer sm.mutex.Unlock()
 
@@ -249,7 +252,7 @@ func (sm *StateManager) UpdateProgress(collectionKey string) {
 			percentage := float64(state.DocumentsIndexed) / float64(state.TotalDocuments) * 100
 			if percentage >= 100 {
 				state.Progress = "100%"
-				state.SyncStatus = SyncStatusIdle
+				state.SyncStatus = StatusIdle
 			} else {
 				state.Progress = fmt.Sprintf("%.1f%%", percentage)
 			}

@@ -11,10 +11,15 @@ import (
 // CommandType represents the type of command.
 type CommandType int
 
+// Command types for the FSM
 const (
+	// AddShardCommand adds a new shard
 	AddShardCommand CommandType = iota
+	// RemoveShardCommand removes a shard
 	RemoveShardCommand
+	// UpdateShardCommand updates shard information
 	UpdateShardCommand
+	// IndexDistributionCommand updates index distribution
 	IndexDistributionCommand
 )
 

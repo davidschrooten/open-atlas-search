@@ -257,48 +257,6 @@ func TestSharding_GetIndexShards(t *testing.T) {
 	}
 }
 
-// newTestCluster creates a cluster of managers for testing.
-func newTestCluster(t *testing.T, numNodes int) []*Manager {
-	cluster := make([]*Manager, numNodes)
-	joinAddrs := []string{}
-
-	for i := 0; i < numNodes; i++ {
-		nodeID := fmt.Sprintf("test-node-%d", i+1)
-		bindAddr := fmt.Sprintf("127.0.0.1:%d", 50071+i)
-		cfg := newTestRaftConfig(t, nodeID, bindAddr)
-
-		if i == 0 {
-			cfg.Cluster.Bootstrap = true
-		} else {
-			cfg.Cluster.Bootstrap = false
-			cfg.Cluster.JoinAddr = joinAddrs
-		}
-
-		m, err := NewManager(cfg)
-		assert.NoError(t, err)
-
-		err = m.Start()
-		assert.NoError(t, err)
-
-		cluster[i] = m
-
-		// Get the address of the running Raft server
-		addr := m.GetLocalAddr()
-		if addr != "" {
-			joinAddrs = append(joinAddrs, addr)
-		}
-	}
-
-	return cluster
-}
-
-// cleanupTestCluster stops all managers and removes their data.
-func cleanupTestCluster(cluster []*Manager) {
-	for _, m := range cluster {
-		m.Stop()
-		os.RemoveAll(m.config.Cluster.RaftDir)
-	}
-}
 
 // waitForLeader waits for a node to become the leader.
 func waitForLeader(t *testing.T, m *Manager, timeout time.Duration) {

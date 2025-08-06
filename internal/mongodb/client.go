@@ -147,13 +147,12 @@ func (c *Client) GetLastDocumentTimestamp(collection, timestampField string) (ti
 			return id.Timestamp(), nil
 		}
 		return time.Time{}, fmt.Errorf("document _id is not an ObjectID")
-	} else {
-		// Use custom timestamp field
-		if timestamp, ok := result[timestampField]; ok {
-			return c.ParseTimestamp(timestamp)
-		}
-		return time.Time{}, fmt.Errorf("timestamp field %s not found in document", timestampField)
 	}
+	// Use custom timestamp field
+	if timestamp, ok := result[timestampField]; ok {
+		return c.ParseTimestamp(timestamp)
+	}
+	return time.Time{}, fmt.Errorf("timestamp field %s not found in document", timestampField)
 }
 
 // ParseTimestamp parses various timestamp formats
