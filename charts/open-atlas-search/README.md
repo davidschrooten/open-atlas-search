@@ -22,8 +22,8 @@ A Helm chart for deploying Open Atlas Search - a MongoDB full-text search servic
 ### Adding the Helm Repository
 
 ```bash
-# Add the repository (replace with actual repository URL when available)
-helm repo add open-atlas-search https://your-org.github.io/open-atlas-search
+# Add the repository
+helm repo add open-atlas-search https://davidschrooten.github.io/open-atlas-search
 helm repo update
 ```
 
@@ -34,7 +34,7 @@ Deploy a standalone instance (single or multiple replicas without clustering):
 ```bash
 helm install my-search open-atlas-search/open-atlas-search \
   --set deploymentMode=standalone \
-  --set image.repository=your-registry/open-atlas-search \
+  --set image.repository=davidschrooten/open-atlas-search \
   --set image.tag=latest \
   --set ingress.hosts[0].host=search.yourdomain.com \
   --set config.mongodb.uri=mongodb://your-mongodb:27017
@@ -49,7 +49,7 @@ helm install my-search-cluster open-atlas-search/open-atlas-search \
   --set deploymentMode=cluster \
   --set statefulSet.replicas=3 \
   --set cluster.bootstrap=true \
-  --set image.repository=your-registry/open-atlas-search \
+  --set image.repository=davidschrooten/open-atlas-search \
   --set image.tag=latest \
   --set ingress.hosts[0].host=search.yourdomain.com \
   --set config.mongodb.uri=mongodb://your-mongodb:27017
@@ -84,7 +84,7 @@ The chart supports two deployment modes controlled by the `deploymentMode` param
 | `deploymentMode` | Deployment mode: "standalone" or "cluster" | `standalone` |
 | `replicaCount` | Number of replicas for standalone mode | `3` |
 | `statefulSet.replicas` | Number of replicas for cluster mode | `3` |
-| `image.repository` | Image repository | `open-atlas-search` |
+| `image.repository` | Image repository | `davidschrooten/open-atlas-search` |
 | `image.tag` | Image tag | `latest` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 

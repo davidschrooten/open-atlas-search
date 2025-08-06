@@ -10,7 +10,7 @@ statefulSet:
   replicas: 3
 
 image:
-  repository: open-atlas-search
+  repository: davidschrooten/open-atlas-search
   pullPolicy: IfNotPresent
   tag: "latest"
 

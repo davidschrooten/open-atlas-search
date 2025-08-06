@@ -61,8 +61,9 @@ The API has been designed to match MongoDB Atlas Search functionality. Below are
 
 ### Kubernetes/Helm (Recommended)
 
-The easiest way to deploy Open Atlas Search is using our Helm chart:
+The easiest way to deploy Open Atlas Search is using our Helm chart. We publish to both traditional repositories and OCI registries:
 
+#### Traditional Repository Method
 ```bash
 # Add the Helm repository
 helm repo add open-atlas-search https://davidschrooten.github.io/open-atlas-search
@@ -73,15 +74,24 @@ helm install my-search open-atlas-search/open-atlas-search \
   --set deploymentMode=standalone \
   --set image.repository=davidschrooten/open-atlas-search \
   --set config.mongodb.uri=mongodb://your-mongodb:27017
+```
+
+#### OCI Registry Method (Helm 3.8+)
+```bash
+# Install directly from OCI registry (recommended)
+helm install my-search oci://ghcr.io/davidschrooten/open-atlas-search/charts/open-atlas-search \
+  --set deploymentMode=standalone \
+  --set image.repository=davidschrooten/open-atlas-search \
+  --set config.mongodb.uri=mongodb://your-mongodb:27017
 
 # Or install in cluster mode
-helm install my-search-cluster open-atlas-search/open-atlas-search \
+helm install my-search-cluster oci://ghcr.io/davidschrooten/open-atlas-search/charts/open-atlas-search \
   --set deploymentMode=cluster \
   --set statefulSet.replicas=3 \
   --set cluster.bootstrap=true
 ```
 
-See the [Helm Chart README](./helm/README.md) for detailed configuration options.
+See the [Helm Chart README](./charts/open-atlas-search/README.md) for detailed configuration options.
 
 ### Docker
 
@@ -327,7 +337,7 @@ spec:
     spec:
       containers:
       - name: open-atlas-search
-        image: open-atlas-search:latest
+        image: davidschrooten/open-atlas-search:latest
         ports:
         - containerPort: 8080
         env:
