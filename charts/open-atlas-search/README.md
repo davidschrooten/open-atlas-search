@@ -96,6 +96,19 @@ The chart supports two deployment modes controlled by the `deploymentMode` param
 | `config.mongodb.uri` | MongoDB connection URI | `mongodb://mongodb:27017` |
 | `config.search.index_path` | Path for search indexes | `/data/indexes` |
 
+### Authentication Parameters
+
+Open Atlas Search supports optional HTTP Basic Authentication to secure API endpoints.
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `authentication.enabled` | Enable HTTP Basic Authentication | `false` |
+| `authentication.username` | Username for API authentication | `""` |
+| `authentication.password` | Password for API authentication | `""` |
+| `authentication.existingSecret` | Use existing secret instead of creating new one | `""` |
+| `authentication.secretKeys.username` | Key name for username in existing secret | `"username"` |
+| `authentication.secretKeys.password` | Key name for password in existing secret | `"password"` |
+
 ### Cluster Parameters
 
 | Parameter | Description | Default |
@@ -239,6 +252,84 @@ cluster:
   joinAddr:
     - "search-cluster-open-atlas-search-0.search-cluster-open-atlas-search-headless.default.svc.cluster.local:7946"
     - "search-cluster-open-atlas-search-1.search-cluster-open-atlas-search-headless.default.svc.cluster.local:7946"
+```
+
+### Example 4: Standalone Deployment with Authentication
+
+```yaml
+# values-with-auth.yaml
+deploymentMode: standalone
+replicaCount: 2
+
+# Enable authentication
+authentication:
+  enabled: true
+  username: "search-admin"
+  password: "secure-password-123"
+
+config:
+  mongodb:
+    uri: "mongodb://my-mongodb:27017"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: secure-search.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: search-tls
+      hosts:
+        - secure-search.example.com
+```
+
+Deploy with:
+```bash
+helm install secure-search open-atlas-search/open-atlas-search -f values-with-auth.yaml
+```
+
+Access the secured API:
+```bash
+# List indexes (requires authentication)
+curl -u search-admin:secure-password-123 https://secure-search.example.com/indexes
+
+# Search (requires authentication)
+curl -u search-admin:secure-password-123 -X POST \
+  https://secure-search.example.com/indexes/myindex/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": {"match_all": {}}}'
+
+# Health check (no authentication required)
+curl https://secure-search.example.com/health
+```
+
+### Example 5: Using Existing Secret for Authentication
+
+First, create a secret with your credentials:
+
+```bash
+kubectl create secret generic my-search-credentials \
+  --from-literal=api-username=admin \
+  --from-literal=api-password=my-super-secret-password
+```
+
+Then configure the chart to use the existing secret:
+
+```yaml
+# values-existing-secret.yaml
+deploymentMode: standalone
+
+authentication:
+  enabled: true
+  existingSecret: "my-search-credentials"
+  secretKeys:
+    username: "api-username"
+    password: "api-password"
+
+config:
+  mongodb:
+    uri: "mongodb://my-mongodb:27017"
 ```
 
 ## Monitoring and Operations

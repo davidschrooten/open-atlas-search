@@ -41,6 +41,18 @@ spec:
           env:
             - name: CONFIG_PATH
               value: "/etc/config/config.yaml"
+            {{- if .Values.authentication.enabled }}
+            - name: OAS_SERVER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if .Values.authentication.existingSecret }}{{ .Values.authentication.existingSecret }}{{ else }}{{ include "open-atlas-search.fullname" . }}-auth{{ end }}
+                  key: {{ .Values.authentication.secretKeys.username }}
+            - name: OAS_SERVER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if .Values.authentication.existingSecret }}{{ .Values.authentication.existingSecret }}{{ else }}{{ include "open-atlas-search.fullname" . }}-auth{{ end }}
+                  key: {{ .Values.authentication.secretKeys.password }}
+            {{- end }}
             {{- range .Values.env }}
             - name: {{ .name }}
               value: {{ .value | quote }}

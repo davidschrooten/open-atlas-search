@@ -56,6 +56,18 @@ spec:
                   fieldPath: status.podIP
             - name: HEADLESS_SERVICE_NAME
               value: {{ include "open-atlas-search.fullname" . }}-headless
+            {{- if .Values.authentication.enabled }}
+            - name: OAS_SERVER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if .Values.authentication.existingSecret }}{{ .Values.authentication.existingSecret }}{{ else }}{{ include "open-atlas-search.fullname" . }}-auth{{ end }}
+                  key: {{ .Values.authentication.secretKeys.username }}
+            - name: OAS_SERVER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if .Values.authentication.existingSecret }}{{ .Values.authentication.existingSecret }}{{ else }}{{ include "open-atlas-search.fullname" . }}-auth{{ end }}
+                  key: {{ .Values.authentication.secretKeys.password }}
+            {{- end }}
             {{- range .Values.env }}
             - name: {{ .name }}
               value: {{ .value | quote }}

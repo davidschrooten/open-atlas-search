@@ -89,6 +89,23 @@ config:
   search:
     index_path: "/data/indexes"
 
+# Authentication configuration
+# When enabled, API endpoints will require HTTP Basic Authentication
+# Leave username and password empty to disable authentication
+authentication:
+  enabled: false
+  # Username for API authentication (can be overridden by existingSecret)
+  username: ""
+  # Password for API authentication (can be overridden by existingSecret)
+  password: ""
+  # Use existing secret instead of creating a new one
+  # The secret should contain keys: username, password
+  existingSecret: ""
+  # Secret keys (used when existingSecret is specified)
+  secretKeys:
+    username: "username"
+    password: "password"
+
 # Cluster settings (automatically enabled when deploymentMode is "cluster")
 cluster:
   # Cluster ports

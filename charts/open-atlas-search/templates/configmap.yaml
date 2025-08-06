@@ -8,6 +8,10 @@ data:
   config.yaml: |
     server:
       port: {{ .Values.config.server.port }}
+      {{- if .Values.authentication.enabled }}
+      # Authentication credentials will be provided via environment variables
+      # OAS_SERVER_USERNAME and OAS_SERVER_PASSWORD
+      {{- end }}
     mongodb:
       uri: {{ .Values.config.mongodb.uri | quote }}
     search:
