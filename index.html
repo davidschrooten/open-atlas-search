@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Atlas Search - Helm Chart Repository</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen" 
+      x-data="helmRepo()" 
+      x-init="loadChartData()">
+    
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-bold text-white mb-4">⚡ Open Atlas Search</h1>
+            <p class="text-xl text-blue-100">MongoDB Full-Text Search Service - Helm Chart Repository</p>
+        </div>
+
+        <!-- Main Content Card -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Navigation Tabs -->
+            <div class="flex flex-wrap bg-gray-50 border-b">
+                <template x-for="tab in tabs" :key="tab.id">
+                    <button @click="activeTab = tab.id"
+                            :class="activeTab === tab.id ? 'bg-white border-b-2 border-primary-500 text-primary-600' : 'hover:bg-gray-100'"
+                            class="px-6 py-4 font-medium transition-colors duration-200"
+                            x-text="tab.name">
+                    </button>
+                </template>
+            </div>
+
+            <!-- Tab Contents -->
+            <div class="p-8">
+                <!-- Overview Tab -->
+                <div x-show="activeTab === 'overview'" x-transition>
+                    <h2 class="text-3xl font-bold mb-6">Welcome to Open Atlas Search</h2>
+                    <p class="text-gray-600 mb-8 text-lg">
+                        Open Atlas Search is a powerful MongoDB full-text search service that provides Atlas Search-like 
+                        capabilities for your MongoDB deployments. Deploy it easily with our Helm charts supporting both 
+                        standalone and cluster modes.
+                    </p>
+
+                    <!-- Features Grid -->
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                        <template x-for="feature in features" :key="feature.title">
+                            <div class="p-6 border rounded-xl hover:shadow-lg transition-shadow duration-300">
+                                <h3 class="text-xl font-semibold text-primary-600 mb-3" x-text="feature.icon + ' ' + feature.title"></h3>
+                                <p class="text-gray-600" x-text="feature.description"></p>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Chart Information -->
+                    <div x-show="!loading && latestChart" class="bg-gray-50 rounded-xl p-6 mb-8">
+                        <h3 class="text-2xl font-semibold text-primary-600 mb-4">📦 Chart Information</h3>
+                        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium">Latest Version:</span>
+                                <span class="bg-primary-500 text-white px-2 py-1 rounded text-sm" x-text="'v' + (latestChart?.version || 'N/A')"></span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium">App Version:</span>
+                                <span x-text="latestChart?.appVersion || 'N/A'"></span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium">Chart Type:</span>
+                                <span x-text="latestChart?.type || 'application'"></span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium">API Version:</span>
+                                <span x-text="latestChart?.apiVersion || 'v2'"></span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium">Created:</span>
+                                <span x-text="formatDate(latestChart?.created)"></span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium">Maintainer:</span>
+                                <span x-text="latestChart?.maintainers?.[0]?.name || 'N/A'"></span>
+                            </div>
+                        </div>
+                        
+                        <div x-show="latestChart?.keywords" class="mt-4">
+                            <template x-for="keyword in latestChart?.keywords" :key="keyword">
+                                <span class="inline-block bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm mr-2 mb-2" x-text="keyword"></span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div x-show="loading" class="text-center py-8">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
+                        <p class="text-gray-500 mt-4">Loading chart information...</p>
+                    </div>
+
+                    <!-- Error State -->
+                    <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6" x-text="error"></div>
+
+                    <!-- Action Buttons -->
+                    <div class="text-center space-x-4">
+                        <a :href="latestChart?.home || '#'" 
+                           class="bg-primary-500 hover:bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors duration-200">
+                            View on GitHub
+                        </a>
+                        <button @click="activeTab = 'installation'"
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors duration-200">
+                            Get Started
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Installation Tab -->
+                <div x-show="activeTab === 'installation'" x-transition>
+                    <h2 class="text-3xl font-bold mb-6">Installation Guide</h2>
+                    <p class="text-gray-600 mb-8">Choose your preferred installation method:</p>
+
+                    <div class="grid lg:grid-cols-2 gap-8 mb-10">
+                        <!-- Traditional Repository Method -->
+                        <div class="border-2 rounded-xl overflow-hidden">
+                            <div class="bg-primary-500 text-white p-4">
+                                <h3 class="text-xl font-bold">🏛️ Traditional Repository (Recommended)</h3>
+                            </div>
+                            <div class="p-6">
+                                <p class="text-gray-600 mb-4">Use the traditional Helm repository method, compatible with all Helm versions:</p>
+                                <div class="bg-gray-100 rounded-lg p-4 overflow-x-auto">
+                                    <pre><code class="text-sm" x-text="getTraditionalInstallCode()"></code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OCI Registry Method -->
+                        <div class="border-2 rounded-xl overflow-hidden">
+                            <div class="bg-primary-500 text-white p-4">
+                                <h3 class="text-xl font-bold">🐳 OCI Registry (Helm 3.8+)</h3>
+                            </div>
+                            <div class="p-6">
+                                <p class="text-gray-600 mb-4">Use the modern OCI registry approach for Helm 3.8 and above:</p>
+                                <div class="bg-gray-100 rounded-lg p-4 overflow-x-auto">
+                                    <pre><code class="text-sm" x-text="getOCIInstallCode()"></code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search and Explore -->
+                    <div class="mb-8">
+                        <h3 class="text-2xl font-semibold mb-4">🔍 Search and Explore</h3>
+                        <div class="bg-gray-100 rounded-lg p-4">
+                            <pre><code class="text-sm"># Search for available charts
+helm search repo open-atlas-search
+
+# Show chart information
+helm show chart open-atlas-search/open-atlas-search
+
+# Show default values
+helm show values open-atlas-search/open-atlas-search</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Prerequisites -->
+                    <div class="bg-blue-50 rounded-lg p-6">
+                        <h3 class="text-xl font-semibold text-blue-800 mb-4">📋 Prerequisites</h3>
+                        <ul class="space-y-2 text-blue-700">
+                            <li>• Kubernetes cluster (1.19+)</li>
+                            <li>• Helm 3.0+ installed</li>
+                            <li>• MongoDB instance accessible from the cluster</li>
+                            <li>• Persistent storage for indexes (recommended)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Configuration Tab -->
+                <div x-show="activeTab === 'configuration'" x-transition>
+                    <h2 class="text-3xl font-bold mb-6">Configuration Options</h2>
+                    <p class="text-gray-600 mb-8">Customize your Open Atlas Search deployment with these key configuration options:</p>
+
+                    <div class="grid md:grid-cols-2 gap-8 mb-10">
+                        <template x-for="config in configExamples" :key="config.title">
+                            <div class="border rounded-xl p-6">
+                                <h3 class="text-xl font-semibold text-primary-600 mb-4" x-text="config.icon + ' ' + config.title"></h3>
+                                <div class="bg-gray-100 rounded-lg p-4 overflow-x-auto">
+                                    <pre><code class="text-sm" x-text="config.code"></code></pre>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Deployment Modes -->
+                    <h3 class="text-2xl font-semibold mb-6">🚀 Deployment Modes</h3>
+                    <div class="grid lg:grid-cols-2 gap-8 mb-8">
+                        <div class="border-2 rounded-xl overflow-hidden">
+                            <div class="bg-green-500 text-white p-4">
+                                <h4 class="text-lg font-bold">🔸 Standalone Mode</h4>
+                            </div>
+                            <div class="p-6">
+                                <p class="text-gray-600 mb-4">Single instance deployment for development or small workloads:</p>
+                                <div class="bg-gray-100 rounded-lg p-4">
+                                    <pre><code class="text-sm">helm install my-atlas-search open-atlas-search/open-atlas-search \
+  --set cluster.enabled=false \
+  --set replicaCount=1</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border-2 rounded-xl overflow-hidden">
+                            <div class="bg-green-500 text-white p-4">
+                                <h4 class="text-lg font-bold">🔸 Cluster Mode</h4>
+                            </div>
+                            <div class="p-6">
+                                <p class="text-gray-600 mb-4">High-availability cluster deployment:</p>
+                                <div class="bg-gray-100 rounded-lg p-4">
+                                    <pre><code class="text-sm">helm install my-atlas-search open-atlas-search/open-atlas-search \
+  --set cluster.enabled=true \
+  --set replicaCount=3 \
+  --set cluster.bootstrap=true</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Configuration -->
+                    <div class="bg-yellow-50 rounded-lg p-6">
+                        <h3 class="text-xl font-semibold text-yellow-800 mb-4">🔧 Advanced Configuration</h3>
+                        <p class="text-yellow-700 mb-4">For complete configuration options, check the values.yaml file or use:</p>
+                        <div class="bg-yellow-100 rounded-lg p-4">
+                            <pre><code class="text-sm">helm show values open-atlas-search/open-atlas-search > values.yaml
+# Edit values.yaml with your preferences
+helm install my-atlas-search open-atlas-search/open-atlas-search -f values.yaml</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Available Charts Tab -->
+                <div x-show="activeTab === 'charts'" x-transition>
+                    <h2 class="text-3xl font-bold mb-6">Available Charts</h2>
+                    
+                    <!-- Loading State -->
+                    <div x-show="loading" class="text-center py-12">
+                        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-500 mx-auto"></div>
+                        <p class="text-gray-500 mt-4">Loading chart information...</p>
+                    </div>
+
+                    <!-- Error State -->
+                    <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6" x-text="error"></div>
+
+                    <!-- Charts List -->
+                    <div x-show="!loading && !error" class="space-y-8">
+                        <template x-for="[chartName, versions] in Object.entries(chartData?.entries || {})" :key="chartName">
+                            <div class="border rounded-xl p-6 bg-white shadow-sm">
+                                <h3 class="text-2xl font-semibold text-primary-600 mb-4">
+                                    📦 <span x-text="chartName"></span>
+                                </h3>
+                                
+                                <p class="text-gray-600 mb-6" x-text="versions[0]?.description || 'No description available'"></p>
+                                
+                                <!-- Chart Details -->
+                                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                    <div class="bg-gray-50 p-3 rounded-lg">
+                                        <div class="text-sm text-gray-500">Current Version</div>
+                                        <div class="font-semibold">
+                                            <span class="bg-primary-500 text-white px-2 py-1 rounded text-sm" x-text="versions[0]?.version"></span>
+                                        </div>
+                                    </div>
+                                    <div class="bg-gray-50 p-3 rounded-lg">
+                                        <div class="text-sm text-gray-500">App Version</div>
+                                        <div class="font-semibold" x-text="versions[0]?.appVersion || 'N/A'"></div>
+                                    </div>
+                                    <div class="bg-gray-50 p-3 rounded-lg">
+                                        <div class="text-sm text-gray-500">API Version</div>
+                                        <div class="font-semibold" x-text="versions[0]?.apiVersion || 'v2'"></div>
+                                    </div>
+                                    <div class="bg-gray-50 p-3 rounded-lg">
+                                        <div class="text-sm text-gray-500">Created</div>
+                                        <div class="font-semibold" x-text="formatDate(versions[0]?.created)"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Keywords -->
+                                <div x-show="versions[0]?.keywords" class="mb-6">
+                                    <template x-for="keyword in versions[0]?.keywords" :key="keyword">
+                                        <span class="inline-block bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm mr-2 mb-2" x-text="keyword"></span>
+                                    </template>
+                                </div>
+
+                                <!-- Quick Install -->
+                                <div class="mb-6">
+                                    <h4 class="text-lg font-semibold mb-3">📥 Quick Install</h4>
+                                    <div class="bg-gray-100 rounded-lg p-4 overflow-x-auto">
+                                        <pre><code class="text-sm" x-text="getQuickInstallCode(chartName, versions[0]?.version)"></code></pre>
+                                    </div>
+                                </div>
+
+                                <!-- Version History -->
+                                <div x-show="versions.length > 1">
+                                    <h4 class="text-lg font-semibold mb-3">📈 Available Versions</h4>
+                                    <div class="space-y-2 max-h-64 overflow-y-auto">
+                                        <template x-for="version in versions.slice(0, 10)" :key="version.version">
+                                            <div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                                                <div>
+                                                    <span class="font-mono font-semibold" x-text="'v' + version.version"></span>
+                                                    <span x-show="version.appVersion" class="text-gray-500 ml-2" x-text="'(app: ' + version.appVersion + ')'"></span>
+                                                    <div class="text-sm text-gray-500" x-text="formatDate(version.created)"></div>
+                                                </div>
+                                                <a x-show="version.urls && version.urls[0]" 
+                                                   :href="version.urls[0]"
+                                                   class="text-primary-500 hover:text-primary-600 text-sm font-medium">
+                                                    📥 Download
+                                                </a>
+                                            </div>
+                                        </template>
+                                        <div x-show="versions.length > 10" class="text-center text-gray-500 text-sm py-2">
+                                            ... and <span x-text="versions.length - 10"></span> more versions
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Useful Links -->
+                    <div x-show="!loading && !error" class="mt-10">
+                        <h3 class="text-xl font-semibold mb-4">🔗 Useful Links</h3>
+                        <div class="space-x-4">
+                            <a :href="latestChart?.home || '#'" 
+                               class="bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200">
+                                Source Code
+                            </a>
+                            <a :href="latestChart?.urls?.[0] || '#'" 
+                               class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200">
+                                Download Latest Chart
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function helmRepo() {
+            return {
+                activeTab: 'overview',
+                loading: true,
+                error: null,
+                chartData: null,
+                latestChart: null,
+                
+                tabs: [
+                    { id: 'overview', name: 'Overview' },
+                    { id: 'installation', name: 'Installation' },
+                    { id: 'configuration', name: 'Configuration' },
+                    { id: 'charts', name: 'Available Charts' }
+                ],
+
+                features: [
+                    {
+                        icon: '🔍',
+                        title: 'Full-Text Search',
+                        description: 'Advanced text search capabilities with custom analyzers, fuzzy matching, and relevance scoring.'
+                    },
+                    {
+                        icon: '⚡',
+                        title: 'High Performance',
+                        description: 'Optimized indexing with configurable batch sizes and flush intervals for maximum throughput.'
+                    },
+                    {
+                        icon: '🌐',
+                        title: 'Cluster Support',
+                        description: 'Built-in clustering with Raft consensus for high availability and horizontal scaling.'
+                    },
+                    {
+                        icon: '🐳',
+                        title: 'Kubernetes Native',
+                        description: 'Designed for Kubernetes with proper health checks, resource management, and scaling policies.'
+                    },
+                    {
+                        icon: '📊',
+                        title: 'Multiple Indexes',
+                        description: 'Support for multiple search indexes across different MongoDB collections.'
+                    },
+                    {
+                        icon: '🔧',
+                        title: 'Easy Configuration',
+                        description: 'Simple YAML configuration with sensible defaults and extensive customization options.'
+                    }
+                ],
+
+                configExamples: [
+                    {
+                        icon: '🗄️',
+                        title: 'MongoDB Settings',
+                        code: `mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "production"
+  username: ""
+  password: ""
+  timeout: 30`
+                    },
+                    {
+                        icon: '🔍',
+                        title: 'Search Configuration',
+                        code: `search:
+  index_path: "./indexes"
+  batch_size: 1000
+  flush_interval: 30
+  sync_state_path: "./sync_state.json"`
+                    },
+                    {
+                        icon: '🌐',
+                        title: 'Cluster Mode',
+                        code: `cluster:
+  enabled: true
+  node_id: "node-1"
+  bind_addr: "0.0.0.0:7946"
+  raft_port: 7946
+  bootstrap: true  # First node only`
+                    },
+                    {
+                        icon: '📊',
+                        title: 'Index Definitions',
+                        code: `indexes:
+  - name: "events"
+    database: "production"
+    collection: "events"
+    distribution:
+      replicas: 1
+      shards: 1`
+                    }
+                ],
+
+                async loadChartData() {
+                    try {
+                        this.loading = true;
+                        this.error = null;
+                        
+                        const response = await fetch('./index.yaml');
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const yamlText = await response.text();
+                        this.chartData = jsyaml.load(yamlText);
+                        
+                        // Get the first chart as latest
+                        if (this.chartData?.entries) {
+                            const firstChartName = Object.keys(this.chartData.entries)[0];
+                            if (firstChartName && this.chartData.entries[firstChartName].length > 0) {
+                                this.latestChart = this.chartData.entries[firstChartName][0];
+                            }
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error loading chart data:', error);
+                        this.error = 'Failed to load chart information: ' + error.message;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                formatDate(dateString) {
+                    if (!dateString) return 'N/A';
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                },
+
+                getRepositoryUrl() {
+                    return window.location.origin + window.location.pathname.replace(/\/$/, '');
+                },
+
+                getTraditionalInstallCode() {
+                    const repoUrl = this.getRepositoryUrl();
+                    const chartName = this.latestChart ? Object.keys(this.chartData.entries)[0] : 'open-atlas-search';
+                    
+                    return `# Add the repository
+helm repo add open-atlas-search ${repoUrl}
+
+# Update repositories
+helm repo update
+
+# Install the chart
+helm install my-atlas-search open-atlas-search/${chartName}
+
+# Install with custom values
+helm install my-atlas-search open-atlas-search/${chartName} \\
+  --set mongodb.uri="mongodb://your-mongo:27017" \\
+  --set mongodb.database="your-database"`;
+                },
+
+                getOCIInstallCode() {
+                    const chartName = this.latestChart ? Object.keys(this.chartData.entries)[0] : 'open-atlas-search';
+                    const version = this.latestChart?.version || '0.2.0';
+                    
+                    return `# Install directly from OCI registry
+helm install my-atlas-search \\
+  oci://ghcr.io/davidschrooten/open-atlas-search/charts/${chartName}
+
+# Install specific version
+helm install my-atlas-search \\
+  oci://ghcr.io/davidschrooten/open-atlas-search/charts/${chartName} \\
+  --version ${version}`;
+                },
+
+                getQuickInstallCode(chartName, version) {
+                    const repoUrl = this.getRepositoryUrl();
+                    
+                    return `# Add repository and install latest version
+helm repo add open-atlas-search ${repoUrl}
+helm repo update
+helm install my-release open-atlas-search/${chartName}
+
+# Install specific version
+helm install my-release open-atlas-search/${chartName} --version ${version}`;
+                },
+
+                init() {
+                    // Handle URL hash for direct navigation
+                    const hash = window.location.hash.replace('#', '');
+                    if (this.tabs.some(tab => tab.id === hash)) {
+                        this.activeTab = hash;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
