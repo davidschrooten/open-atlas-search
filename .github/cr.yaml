@@ -1,6 +1,0 @@
-# Chart Releaser Configuration
-# Use defaults for most settings
-
-release-name-template: "{{ .Name }}-{{ .Version }}"
-commit-message-template: "Release {{ .Name }}-{{ .Version }}"
-generate-release-notes: true

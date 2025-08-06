@@ -1,4 +1,4 @@
-name: Publish Helm Chart
+name: package-helm-chart
 
 on:
   push:
@@ -6,22 +6,15 @@ on:
       - master
     paths:
       - 'helm/**'
+  
   workflow_dispatch:
-    inputs:
-      force_release:
-        description: 'Force release even if version exists'
-        required: false
-        default: 'false'
-        type: boolean
 
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
@@ -43,74 +36,88 @@ jobs:
             --set deploymentMode=cluster \
             --set image.repository=test/open-atlas-search
 
-  publish:
-    runs-on: ubuntu-latest
+  package-helm-chart:
     needs: lint-and-test
     permissions:
-      contents: write
+      contents: read
+      packages: write
+
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Configure Git
+      - name: Install yq
+        uses: mikefarah/yq@v4.44.1
+
+      - name: Set environment variables
+        id: set-variables
         run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          echo "REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$(yq -r .version ./helm/Chart.yaml)" >> "$GITHUB_OUTPUT"
 
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: v3.15.2
-
-      - name: Get chart version
-        id: chart_version
+      - name: Env variable output
+        id: test-variables
         run: |
-          VERSION=$(helm show chart ./helm | grep '^version:' | cut -d' ' -f2)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Chart version: $VERSION"
+          echo ${{ steps.set-variables.outputs.REPOSITORY }}
+          echo ${{ steps.set-variables.outputs.VERSION }}
 
-      - name: Check if release exists
-        id: release_check
-        run: |
-          if gh release view "open-atlas-search-${{ steps.chart_version.outputs.version }}" &>/dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Release already exists for version ${{ steps.chart_version.outputs.version }}"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "No existing release for version ${{ steps.chart_version.outputs.version }}"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Package and push helm chart
+        run: |
+          helm package ./helm --version ${{ steps.set-variables.outputs.VERSION }}
+          helm push ./open-atlas-search-${{ steps.set-variables.outputs.VERSION }}.tgz oci://${{ steps.set-variables.outputs.REPOSITORY }}/charts
+  
+  publish-helm-chart:
+    needs: lint-and-test
+    permissions:
+      id-token: write
+      packages: write
+      contents: write
+      actions: read
+      deployments: read
+      pull-requests: read
+      
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Publish Helm chart to GitHub Pages
+        uses: stefanprodan/helm-gh-pages@v1.7.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           charts_dir: helm
-          skip_existing: ${{ inputs.force_release != 'true' }}
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          charts_url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          owner: ${{ github.repository_owner }}
+          repository: ${{ github.event.repository.name }}
+          branch: gh-pages
+          commit_username: ${{ github.actor }}
+          commit_email: ${{ github.actor }}@users.noreply.github.com
+          linting: off
 
-      - name: Update repository index
+      - name: Repository information
         run: |
-          echo "📦 Helm repository updated!"
-          echo "🌐 Repository URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-          echo "📋 Chart version: ${{ steps.chart_version.outputs.version }}"
+          echo "📦 Helm chart published to multiple locations!"
           echo ""
-          echo "🚀 Getting Started:"
-          echo "1. Add the repository:"
+          echo "🌐 GitHub Pages Repository: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          echo "📦 OCI Registry: ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')/charts"
+          echo ""
+          echo "🚀 Getting Started (GitHub Pages):"
           echo "   helm repo add open-atlas-search https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-          echo ""
-          echo "2. Update your repositories:"
           echo "   helm repo update"
+          echo "   helm install my-search open-atlas-search/open-atlas-search"
           echo ""
-          echo "3. Install the chart:"
-          echo "   # Standalone mode:"
-          echo "   helm install my-search open-atlas-search/open-atlas-search --set deploymentMode=standalone"
-          echo ""
-          echo "   # Cluster mode:"
-          echo "   helm install my-search open-atlas-search/open-atlas-search --set deploymentMode=cluster"
+          echo "🚀 Getting Started (OCI Registry):"
+          echo "   helm install my-search oci://ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')/charts/open-atlas-search"
           echo ""
           echo "📚 Documentation: https://github.com/${{ github.repository }}/blob/master/helm/README.md"
 
