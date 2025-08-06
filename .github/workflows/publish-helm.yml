@@ -48,8 +48,6 @@ jobs:
     needs: lint-and-test
     permissions:
       contents: write
-      pages: write
-      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -91,10 +89,8 @@ jobs:
         with:
           charts_dir: helm
           skip_existing: ${{ inputs.force_release != 'true' }}
-          config: .github/cr.yaml
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          CR_PAGES_BRANCH: gh-pages
 
       - name: Update repository index
         run: |

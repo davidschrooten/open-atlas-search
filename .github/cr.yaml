@@ -1,12 +1,6 @@
 # Chart Releaser Configuration
-owner: davidschrooten # Update this with your GitHub username/organization
-git-repo: open-atlas-search
-package-path: .cr-release-packages
-index-path: .cr-index
-charts-repo-url: https://davidschrooten.github.io/open-atlas-search # Update with your URL
-pages-branch: gh-pages
-pages-index-path: index.yaml
+# Use defaults for most settings
+
 release-name-template: "{{ .Name }}-{{ .Version }}"
 commit-message-template: "Release {{ .Name }}-{{ .Version }}"
 generate-release-notes: true
-make-release-latest: true
