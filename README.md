@@ -1,11 +1,22 @@
 # Open Atlas Search
 
-A replacement for MongoDB Atlas Search functionality built in Go. This application provides full-text search, faceted search, and real-time indexing capabilities for self-managed MongoDB deployments.
-It does not require MongoDB change stream, it uses timestamps to track changes.
+[![Build and Publish Docker Image](https://github.com/davidschrooten/open-atlas-search/actions/workflows/docker.yml/badge.svg)](https://github.com/davidschrooten/open-atlas-search/actions/workflows/docker.yml)
+[![Test](https://github.com/davidschrooten/open-atlas-search/actions/workflows/test.yml/badge.svg)](https://github.com/davidschrooten/open-atlas-search/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/davidschrooten/open-atlas-search)](https://goreportcard.com/report/github.com/davidschrooten/open-atlas-search)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A replacement for MongoDB Atlas Search functionality built in Go. Provides full-text search, faceted search, and real-time indexing capabilities for self-managed MongoDB deployments.
+
+**Key Benefits:**
+- No MongoDB change streams required - uses timestamp-based polling
+- Atlas Search compatible functionality-wise
+- Self-hosted alternative to MongoDB Atlas Search
+- Easily deployable with Helm
+- Low memory footprint, stellar performance
 
 ## API Routes
 
-The API has been designed to closely match MongoDB Atlas Search. Below are the main routes:
+The API has been designed to match MongoDB Atlas Search functionality. Below are the main routes:
 
 ### POST /indexes/{index}/search
 - **Purpose**: Search within a specific index
@@ -44,7 +55,7 @@ The API has been designed to closely match MongoDB Atlas Search. Below are the m
 - **Chi Router**: Lightweight HTTP router for API endpoints
 - **Bleve Search**: Full-text search and indexing engine
 - **MongoDB Driver**: Official Go driver for MongoDB connectivity
-- **Change Streams**: Real-time monitoring of document changes
+- **Timestamp Polling**: Real-time monitoring of document changes via timestamp queries
 
 ## Installation
 
@@ -313,21 +324,13 @@ search:
   bulk_indexing: true      # Enable bulk indexing
 ```
 
-## Performance Optimizations
-
-### Optimizations Implemented
-
-1. **Bulk Indexing**: Batched operations for increased speed.
-2. **Cursor Optimization**: Enhanced MongoDB cursor settings.
-3. **Configurable Batch Sizes**: Adjustable sizes per operation.
-4. **Enhanced Progress Tracking**: Real-time sync tracking.
-
-### Performance Tuning Tips
+## Performance Tuning
 
 - Adjust `batch_size` for bulk indexing performance
 - Set `flush_interval` based on your consistency requirements
-- Use appropriate field types (keyword vs text) for better performance
-- Adjust polling interval based on your real-time requirements
+- Use appropriate field types (`keyword` vs `text`) for better performance
+- Configure polling intervals based on real-time requirements
+- Tune `worker_count` for concurrent processing
 
 ## Health Checks
 
