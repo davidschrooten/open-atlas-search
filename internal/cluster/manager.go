@@ -28,18 +28,18 @@ type ShardInfo struct {
 
 // Manager handles cluster operations and coordination
 type Manager struct {
-	config      *config.Config
-	raft        *raft.Raft
-	fsm         *FSM
-	ring        *hashring.HashRing
-	nodeID      string
-	shards      map[string][]ShardInfo // index_name -> shards
-	isLeader    bool
-	ctx         context.Context
-	cancel      context.CancelFunc
-	isRunning   bool
-	grpcServer  *grpc.Server
-	transport   raft.Transport
+	config     *config.Config
+	raft       *raft.Raft
+	fsm        *FSM
+	ring       *hashring.HashRing
+	nodeID     string
+	shards     map[string][]ShardInfo // index_name -> shards
+	isLeader   bool
+	ctx        context.Context
+	cancel     context.CancelFunc
+	isRunning  bool
+	grpcServer *grpc.Server
+	transport  raft.Transport
 }
 
 // NewManager creates a new cluster manager
@@ -49,7 +49,7 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	nodeID := cfg.Cluster.NodeID
 	if nodeID == "" {
 		// Generate a unique node ID if not provided
@@ -99,7 +99,7 @@ func (m *Manager) Start() error {
 
 	m.isRunning = true
 	log.Printf("Cluster manager started for node %s", m.nodeID)
-	
+
 	return nil
 }
 
@@ -110,7 +110,7 @@ func (m *Manager) Stop() error {
 	}
 
 	m.cancel()
-	
+
 	if m.raft != nil {
 		if err := m.raft.Shutdown().Error(); err != nil {
 			return fmt.Errorf("failed to shutdown raft: %w", err)
@@ -119,7 +119,7 @@ func (m *Manager) Stop() error {
 
 	m.isRunning = false
 	log.Printf("Cluster manager stopped for node %s", m.nodeID)
-	
+
 	return nil
 }
 
@@ -219,12 +219,12 @@ func (m *Manager) joinCluster(leaderAddr string) error {
 // initializeSharding sets up consistent hashing for indexes
 func (m *Manager) initializeSharding() error {
 	nodes := []string{}
-	
+
 	// Add current node's shards to the ring
 	for _, indexCfg := range m.config.Indexes {
 		replicas := indexCfg.Distribution.Replicas
 		shards := indexCfg.Distribution.Shards
-		
+
 		if replicas == 0 {
 			replicas = 1
 		}
@@ -242,13 +242,13 @@ func (m *Manager) initializeSharding() error {
 					NodeID:    m.nodeID,
 				}
 				indexShards = append(indexShards, shardInfo)
-				
+
 				// Add to consistent hash ring
 				nodeKey := fmt.Sprintf("%s:%s:r%d:s%d", m.nodeID, indexCfg.Name, r, s)
 				nodes = append(nodes, nodeKey)
 			}
 		}
-		
+
 		m.shards[indexCfg.Name] = indexShards
 	}
 
@@ -268,7 +268,7 @@ func (m *Manager) monitorLeadership() {
 		case <-ticker.C:
 			wasLeader := m.isLeader
 			m.isLeader = m.raft.State() == raft.Leader
-			
+
 			if m.isLeader && !wasLeader {
 				log.Printf("Node %s became leader", m.nodeID)
 				// Handle leadership transition

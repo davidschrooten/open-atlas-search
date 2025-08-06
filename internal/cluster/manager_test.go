@@ -257,7 +257,6 @@ func TestSharding_GetIndexShards(t *testing.T) {
 	}
 }
 
-
 // waitForLeader waits for a node to become the leader.
 func waitForLeader(t *testing.T, m *Manager, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -275,4 +274,3 @@ func waitForLeader(t *testing.T, m *Manager, timeout time.Duration) {
 		}
 	}
 }
-

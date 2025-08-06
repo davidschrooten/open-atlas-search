@@ -55,15 +55,15 @@ func (f *FSM) Apply(log *raft.Log) interface{} {
 	case AddShardCommand:
 		f.shards[cmd.ShardID] = cmd.Data
 		return fmt.Sprintf("shard %s added", cmd.ShardID)
-		
+
 	case RemoveShardCommand:
 		delete(f.shards, cmd.ShardID)
 		return fmt.Sprintf("shard %s removed", cmd.ShardID)
-		
+
 	case UpdateShardCommand:
 		f.shards[cmd.ShardID] = cmd.Data
 		return fmt.Sprintf("shard %s updated", cmd.ShardID)
-		
+
 	case IndexDistributionCommand:
 		// Handle index distribution changes
 		if shardInfo, ok := cmd.Data.(map[string]interface{}); ok {
@@ -75,7 +75,7 @@ func (f *FSM) Apply(log *raft.Log) interface{} {
 			}
 		}
 		return fmt.Errorf("invalid index distribution data")
-		
+
 	default:
 		return fmt.Errorf("unknown command type: %v", cmd.Type)
 	}
@@ -88,12 +88,12 @@ func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	for k, v := range f.shards {
 		shards[k] = v
 	}
-	
+
 	indexShards := make(map[string][]string)
 	for k, v := range f.indexShards {
 		indexShards[k] = append([]string(nil), v...)
 	}
-	
+
 	return &FSMSnapshot{
 		shards:      shards,
 		indexShards: indexShards,
@@ -108,7 +108,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 		Shards      map[string]interface{} `json:"shards"`
 		IndexShards map[string][]string    `json:"index_shards"`
 	}
-	
+
 	if err := json.NewDecoder(rc).Decode(&state); err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func (s *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
 		"shards":       s.shards,
 		"index_shards": s.indexShards,
 	}
-	
+
 	if err := json.NewEncoder(sink).Encode(state); err != nil {
 		sink.Cancel()
 		return err

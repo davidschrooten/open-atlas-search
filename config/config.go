@@ -9,11 +9,11 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	MongoDB  MongoDBConfig  `mapstructure:"mongodb"`
-	Search   SearchConfig   `mapstructure:"search"`
-	Cluster  ClusterConfig  `mapstructure:"cluster"`
-	Indexes  []IndexConfig  `mapstructure:"indexes"`
+	Server  ServerConfig  `mapstructure:"server"`
+	MongoDB MongoDBConfig `mapstructure:"mongodb"`
+	Search  SearchConfig  `mapstructure:"search"`
+	Cluster ClusterConfig `mapstructure:"cluster"`
+	Indexes []IndexConfig `mapstructure:"indexes"`
 }
 
 // ServerConfig contains HTTP server settings
@@ -35,7 +35,7 @@ type MongoDBConfig struct {
 type SearchConfig struct {
 	IndexPath     string `mapstructure:"index_path"`
 	BatchSize     int    `mapstructure:"batch_size"`
-	FlushInterval int    `mapstructure:"flush_interval"` // in seconds
+	FlushInterval int    `mapstructure:"flush_interval"`  // in seconds
 	SyncStatePath string `mapstructure:"sync_state_path"` // Path to store sync state for persistence
 	// Performance optimization settings
 	WorkerCount     int  `mapstructure:"worker_count"`      // Number of concurrent indexing workers
@@ -46,26 +46,26 @@ type SearchConfig struct {
 
 // ClusterConfig contains cluster-specific settings
 type ClusterConfig struct {
-	Enabled     bool     `mapstructure:"enabled"`       // Enable cluster mode
-	NodeID      string   `mapstructure:"node_id"`       // Unique node identifier
-	BindAddr    string   `mapstructure:"bind_addr"`     // Address to bind Raft transport
-	RaftPort    int      `mapstructure:"raft_port"`     // Port for Raft communication
-	RaftDir     string   `mapstructure:"raft_dir"`      // Directory for Raft logs and snapshots
-	Bootstrap   bool     `mapstructure:"bootstrap"`     // Bootstrap cluster (only for first node)
-	JoinAddr    []string `mapstructure:"join_addr"`     // Addresses of existing cluster members to join
-	DataDir     string   `mapstructure:"data_dir"`      // Directory for cluster data
+	Enabled   bool     `mapstructure:"enabled"`   // Enable cluster mode
+	NodeID    string   `mapstructure:"node_id"`   // Unique node identifier
+	BindAddr  string   `mapstructure:"bind_addr"` // Address to bind Raft transport
+	RaftPort  int      `mapstructure:"raft_port"` // Port for Raft communication
+	RaftDir   string   `mapstructure:"raft_dir"`  // Directory for Raft logs and snapshots
+	Bootstrap bool     `mapstructure:"bootstrap"` // Bootstrap cluster (only for first node)
+	JoinAddr  []string `mapstructure:"join_addr"` // Addresses of existing cluster members to join
+	DataDir   string   `mapstructure:"data_dir"`  // Directory for cluster data
 }
 
 // IndexConfig represents a search index configuration similar to MongoDB Atlas Search
 type IndexConfig struct {
-	Name           string                 `mapstructure:"name"`
-	Database       string                 `mapstructure:"database"`
-	Collection     string                 `mapstructure:"collection"`
-	Definition     IndexDefinition        `mapstructure:"definition"`
-	TimestampField string                 `mapstructure:"timestamp_field,omitempty"` // Custom field for polling timestamps
-	IDField        string                 `mapstructure:"id_field,omitempty"`        // Custom field name for document ID (defaults to "_id")
-	PollInterval   int                    `mapstructure:"poll_interval,omitempty"`   // Collection-specific poll interval in seconds
-	Distribution   IndexDistribution      `mapstructure:"distribution,omitempty"`    // Distribution settings for cluster mode
+	Name           string            `mapstructure:"name"`
+	Database       string            `mapstructure:"database"`
+	Collection     string            `mapstructure:"collection"`
+	Definition     IndexDefinition   `mapstructure:"definition"`
+	TimestampField string            `mapstructure:"timestamp_field,omitempty"` // Custom field for polling timestamps
+	IDField        string            `mapstructure:"id_field,omitempty"`        // Custom field name for document ID (defaults to "_id")
+	PollInterval   int               `mapstructure:"poll_interval,omitempty"`   // Collection-specific poll interval in seconds
+	Distribution   IndexDistribution `mapstructure:"distribution,omitempty"`    // Distribution settings for cluster mode
 }
 
 // IndexDistribution defines how an index is distributed across the cluster
@@ -87,8 +87,8 @@ type IndexMappings struct {
 
 // FieldConfig represents field-specific indexing configuration
 type FieldConfig struct {
-	Name     string                 `mapstructure:"name"`                // Field name in the index
-	Field    string                 `mapstructure:"field"`               // Source field name in the document
+	Name     string                 `mapstructure:"name"`  // Field name in the index
+	Field    string                 `mapstructure:"field"` // Source field name in the document
 	Type     string                 `mapstructure:"type"`
 	Analyzer string                 `mapstructure:"analyzer,omitempty"`
 	Multi    map[string]FieldConfig `mapstructure:"multi,omitempty"`
@@ -99,7 +99,7 @@ type FieldConfig struct {
 func LoadConfig(configPath string) (*Config, error) {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
-	
+
 	if configPath != "" {
 		viper.SetConfigFile(configPath)
 	} else {
@@ -160,7 +160,7 @@ func (c *MongoDBConfig) GetMongoURI() string {
 	if c.URI != "" {
 		return c.URI
 	}
-	
+
 	// Build URI from components if not provided directly
 	uri := "mongodb://"
 	if c.Username != "" && c.Password != "" {

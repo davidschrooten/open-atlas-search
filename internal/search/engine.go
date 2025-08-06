@@ -79,7 +79,7 @@ func (e *Engine) CreateIndex(indexCfg config.IndexConfig) error {
 	if indexCfg.Distribution.Shards > 1 {
 		return e.createShardedIndex(indexCfg)
 	}
-	
+
 	// Single shard index
 	return e.createSingleIndex(indexCfg)
 }
@@ -113,20 +113,20 @@ func (e *Engine) createSingleIndex(indexCfg config.IndexConfig) error {
 
 // createShardedIndex creates multiple shard indexes for a single logical index
 func (e *Engine) createShardedIndex(indexCfg config.IndexConfig) error {
-	indexName := indexCfg.Name  
-	
+	indexName := indexCfg.Name
+
 	// Create mapping based on configuration
 	indexMapping := e.createMapping(indexCfg.Definition)
-	
+
 	for shard := 0; shard < indexCfg.Distribution.Shards; shard++ {
 		shardName := fmt.Sprintf("%s_shard_%d", indexName, shard)
 		shardPath := filepath.Join(e.indexPath, shardName)
-		
+
 		// Check if shard already exists
 		if _, exists := e.indexes[shardName]; exists {
 			continue // Shard already exists
 		}
-		
+
 		// Try to open existing shard first
 		index, err := bleve.Open(shardPath)
 		if err != nil {
@@ -136,10 +136,10 @@ func (e *Engine) createShardedIndex(indexCfg config.IndexConfig) error {
 				return fmt.Errorf("failed to create shard %s: %w", shardName, err)
 			}
 		}
-		
+
 		e.indexes[shardName] = index
 	}
-	
+
 	return nil
 }
 
@@ -289,7 +289,7 @@ func (e *Engine) removeIndexInternal(indexName string) error {
 func (e *Engine) IndexDocument(indexName, docID string, doc map[string]interface{}) error {
 	// For sharded indexes, determine which shard to use
 	shardName := e.getShardForDocument(indexName, docID)
-	
+
 	e.mutex.RLock()
 	index, exists := e.indexes[shardName]
 	e.mutex.RUnlock()
@@ -687,7 +687,7 @@ func (e *Engine) getShardForDocument(indexName, docID string) string {
 func (e *Engine) SearchSharded(req SearchRequest) (*SearchResult, error) {
 	// Find all shards for this index
 	shards := e.getShardsForIndex(req.Index)
-	
+
 	if len(shards) == 0 {
 		// No shards found, try direct index search
 		return e.Search(req)

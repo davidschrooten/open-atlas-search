@@ -12,7 +12,7 @@ func TestLoadConfig(t *testing.T) {
 	// Create a temporary config file
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "config.yaml")
-	
+
 	configContent := `
 server:
   host: "localhost"
@@ -46,17 +46,17 @@ indexes:
           - name: "price"
             type: "numeric"
 `
-	
+
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
-	
+
 	// Load config
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
-	
+
 	// Verify server config
 	if cfg.Server.Host != "localhost" {
 		t.Errorf("Expected server host 'localhost', got '%s'", cfg.Server.Host)
@@ -64,7 +64,7 @@ indexes:
 	if cfg.Server.Port != 9090 {
 		t.Errorf("Expected server port 9090, got %d", cfg.Server.Port)
 	}
-	
+
 	// Verify mongodb config
 	if cfg.MongoDB.URI != "mongodb://localhost:27017" {
 		t.Errorf("Expected mongodb uri 'mongodb://localhost:27017', got '%s'", cfg.MongoDB.URI)
@@ -75,7 +75,7 @@ indexes:
 	if cfg.MongoDB.Timeout != 60 {
 		t.Errorf("Expected mongodb timeout 60, got %d", cfg.MongoDB.Timeout)
 	}
-	
+
 	// Verify search config
 	if cfg.Search.IndexPath != "/tmp/indexes" {
 		t.Errorf("Expected search index_path '/tmp/indexes', got '%s'", cfg.Search.IndexPath)
@@ -89,12 +89,12 @@ indexes:
 	if cfg.Search.SyncStatePath != "/tmp/sync_state.json" {
 		t.Errorf("Expected search sync_state_path '/tmp/sync_state.json', got '%s'", cfg.Search.SyncStatePath)
 	}
-	
+
 	// Verify indexes config
 	if len(cfg.Indexes) != 1 {
 		t.Fatalf("Expected 1 index, got %d", len(cfg.Indexes))
 	}
-	
+
 	index := cfg.Indexes[0]
 	if index.Name != "test_index" {
 		t.Errorf("Expected index name 'test_index', got '%s'", index.Name)
@@ -114,16 +114,16 @@ indexes:
 	if index.PollInterval != 10 {
 		t.Errorf("Expected index poll_interval 10, got %d", index.PollInterval)
 	}
-	
+
 	// Verify index definition
 	if !index.Definition.Mappings.Dynamic {
 		t.Error("Expected index mappings to be dynamic")
 	}
-	
+
 	if len(index.Definition.Mappings.Fields) != 2 {
 		t.Errorf("Expected 2 field mappings, got %d", len(index.Definition.Mappings.Fields))
 	}
-	
+
 	// Find title field
 	var titleField *FieldConfig
 	for i := range index.Definition.Mappings.Fields {
@@ -142,7 +142,7 @@ indexes:
 			t.Errorf("Expected title field analyzer 'standard', got '%s'", titleField.Analyzer)
 		}
 	}
-	
+
 	// Find price field
 	var priceField *FieldConfig
 	for i := range index.Definition.Mappings.Fields {
@@ -171,7 +171,7 @@ func TestLoadConfig_WithDefaults(t *testing.T) {
 	// Create minimal config file
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "config.yaml")
-	
+
 	configContent := `
 mongodb:
   uri: "mongodb://localhost:27017"
@@ -184,16 +184,16 @@ indexes:
       mappings:
         dynamic: true
 `
-	
+
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
-	
+
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
-	
+
 	// Verify defaults are applied
 	if cfg.Server.Host != "0.0.0.0" {
 		t.Errorf("Expected default server host '0.0.0.0', got '%s'", cfg.Server.Host)
@@ -216,7 +216,7 @@ indexes:
 	if cfg.Search.SyncStatePath != "./sync_state.json" {
 		t.Errorf("Expected default search sync_state_path './sync_state.json', got '%s'", cfg.Search.SyncStatePath)
 	}
-	
+
 	// Verify index uses defaults for optional fields
 	index := cfg.Indexes[0]
 	if index.IDField != "" {
@@ -244,8 +244,8 @@ func TestMongoDBConfig_GetMongoURI(t *testing.T) {
 			expected: "mongodb://custom:27017/mydb",
 		},
 		{
-			name: "No URI, no credentials",
-			config: MongoDBConfig{},
+			name:     "No URI, no credentials",
+			config:   MongoDBConfig{},
 			expected: "mongodb://localhost:27017",
 		},
 		{
@@ -257,7 +257,7 @@ func TestMongoDBConfig_GetMongoURI(t *testing.T) {
 			expected: "mongodb://user:pass@localhost:27017",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.config.GetMongoURI()
@@ -278,11 +278,11 @@ func TestEnvironmentVariableOverrides(t *testing.T) {
 		os.Unsetenv("OAS_MONGODB_DATABASE")
 		os.Unsetenv("OAS_SEARCH_BATCH_SIZE")
 	}()
-	
+
 	// Create minimal config file
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "config.yaml")
-	
+
 	configContent := `
 server:
   port: 8080
@@ -298,19 +298,19 @@ indexes:
       mappings:
         dynamic: true
 `
-	
+
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
-	
+
 	// Reset viper to ensure clean state
 	viper.Reset()
-	
+
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
-	
+
 	// Verify environment variables override config file values
 	if cfg.Server.Port != 9999 {
 		t.Errorf("Expected port 9999 from env var, got %d", cfg.Server.Port)
@@ -326,9 +326,9 @@ indexes:
 func TestSetDefaults(t *testing.T) {
 	// Reset viper to ensure clean state
 	viper.Reset()
-	
+
 	setDefaults()
-	
+
 	// Verify all defaults are set
 	if viper.GetString("server.host") != "0.0.0.0" {
 		t.Errorf("Expected default server.host '0.0.0.0', got '%s'", viper.GetString("server.host"))

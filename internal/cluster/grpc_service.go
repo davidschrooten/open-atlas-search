@@ -24,10 +24,10 @@ func NewServiceServer(manager *Manager) *ServiceServer {
 // JoinCluster handles requests from nodes wanting to join the cluster
 func (s *ServiceServer) JoinCluster(ctx context.Context, req *JoinRequest) (*JoinResponse, error) {
 	log.Printf("Node %s requesting to join cluster from %s", req.NodeID, req.Address)
-	
+
 	// Add the node to the cluster (simplified implementation)
 	s.manager.AddNode(req.NodeID, req.Address)
-	
+
 	return &JoinResponse{
 		Message: fmt.Sprintf("Node %s successfully joined the cluster", req.NodeID),
 	}, nil
@@ -36,7 +36,7 @@ func (s *ServiceServer) JoinCluster(ctx context.Context, req *JoinRequest) (*Joi
 // GetClusterState returns the current cluster state
 func (s *ServiceServer) GetClusterState(ctx context.Context, req *StateRequest) (*StateResponse, error) {
 	nodeIDs := s.manager.GetNodeIDs()
-	
+
 	return &StateResponse{
 		NodeIDs: nodeIDs,
 	}, nil
@@ -51,18 +51,18 @@ func (m *Manager) StartGRPCServer(port int) error {
 
 	grpcServer := grpc.NewServer()
 	// clusterService := NewServiceServer(m)
-	
+
 	// Register the service (commented out until protobuf is generated)
 	// RegisterClusterServiceServer(grpcServer, clusterService)
-	
+
 	log.Printf("Starting gRPC server on port %d", port)
-	
+
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Printf("gRPC server failed: %v", err)
 		}
 	}()
-	
+
 	m.grpcServer = grpcServer
 	return nil
 }

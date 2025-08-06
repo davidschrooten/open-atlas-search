@@ -69,7 +69,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize indexer: %w", err)
 	}
 
-// Initialize cluster manager if cluster mode is enabled
+	// Initialize cluster manager if cluster mode is enabled
 	var clusterManager *cluster.Manager
 	if cfg.Cluster.Enabled {
 		clusterManager, err = cluster.NewManager(cfg)

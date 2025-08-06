@@ -22,16 +22,16 @@ const (
 
 // CollectionState represents the sync state for a single collection
 type CollectionState struct {
-	LastPollTime     time.Time  `json:"lastPollTime"`
-	LastSyncTime     time.Time  `json:"lastSyncTime"`
-	IndexName        string     `json:"indexName"`
-	CollectionKey    string     `json:"collectionKey"`
-	TimestampField   string     `json:"timestampField"`
-	IDField          string     `json:"idField"`
-	DocumentsIndexed int64      `json:"documentsIndexed"`
-	SyncStatus       Status `json:"syncStatus"`
-	Progress         string     `json:"progress"`
-	TotalDocuments   int64      `json:"totalDocuments,omitempty"`
+	LastPollTime     time.Time `json:"lastPollTime"`
+	LastSyncTime     time.Time `json:"lastSyncTime"`
+	IndexName        string    `json:"indexName"`
+	CollectionKey    string    `json:"collectionKey"`
+	TimestampField   string    `json:"timestampField"`
+	IDField          string    `json:"idField"`
+	DocumentsIndexed int64     `json:"documentsIndexed"`
+	SyncStatus       Status    `json:"syncStatus"`
+	Progress         string    `json:"progress"`
+	TotalDocuments   int64     `json:"totalDocuments,omitempty"`
 }
 
 // SyncState manages persistent state for all collections

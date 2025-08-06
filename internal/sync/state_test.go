@@ -262,7 +262,7 @@ func TestStateManager_ConcurrentAccess(t *testing.T) {
 			continue
 		}
 		if state.DocumentsIndexed != numOperations {
-			t.Errorf("Expected collection %s to have %d documents, got %d", 
+			t.Errorf("Expected collection %s to have %d documents, got %d",
 				collectionKey, numOperations, state.DocumentsIndexed)
 		}
 	}

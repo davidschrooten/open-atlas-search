@@ -24,19 +24,19 @@ type ErrorResponse struct {
 
 // Server represents the API server
 type Server struct {
-	searchEngine    search.SearchEngine
-	indexerService  *indexer.Service
-	clusterManager  *cluster.Manager
-	config          *config.Config
+	searchEngine   search.SearchEngine
+	indexerService *indexer.Service
+	clusterManager *cluster.Manager
+	config         *config.Config
 }
 
 // NewServer creates a new API server
 func NewServer(searchEngine search.SearchEngine, indexerService *indexer.Service, cfg *config.Config, clusterManager *cluster.Manager) *Server {
 	return &Server{
-		searchEngine:    searchEngine,
-		indexerService:  indexerService,
-		clusterManager:  clusterManager,
-		config:          cfg,
+		searchEngine:   searchEngine,
+		indexerService: indexerService,
+		clusterManager: clusterManager,
+		config:         cfg,
 	}
 }
 
@@ -123,7 +123,7 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	// Determine if this index is sharded and use appropriate search method
 	var searchResult *search.SearchResult
 	var err error
-	
+
 	// Check if this index has multiple shards
 	if s.isIndexSharded(index) {
 		// Use sharded search
@@ -137,7 +137,7 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		// Use regular search for non-sharded indexes
 		searchResult, err = s.searchEngine.Search(sReq)
 	}
-	
+
 	if err != nil {
 		log.Printf("Search error for index '%s': %v", index, err)
 		// Check if it's an index not found error
