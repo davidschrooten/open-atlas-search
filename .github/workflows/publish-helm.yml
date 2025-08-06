@@ -1,11 +1,11 @@
-name: Package Helm Chart
+name: package-helm-chart
 
 on:
   push:
     branches:
       - master
     paths:
-      - "helm/**"
+      - 'charts/**'
 
   workflow_dispatch:
 
@@ -22,17 +22,17 @@ jobs:
           version: v3.15.2
 
       - name: Lint Helm chart
-        run: helm lint ./helm
+        run: helm lint ./charts/open-atlas-search
 
       - name: Template Helm chart (Standalone)
         run: |
-          helm template test-standalone ./helm \
+          helm template test-standalone ./charts/open-atlas-search \
             --set deploymentMode=standalone \
             --set image.repository=test/open-atlas-search
 
       - name: Template Helm chart (Cluster)
         run: |
-          helm template test-cluster ./helm \
+          helm template test-cluster ./charts/open-atlas-search \
             --set deploymentMode=cluster \
             --set image.repository=test/open-atlas-search
 
@@ -55,7 +55,7 @@ jobs:
         id: set-variables
         run: |
           echo "REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-          echo "VERSION=$(yq -r .version ./helm/Chart.yaml)" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$(yq -r .version ./charts/open-atlas-search/Chart.yaml)" >> "$GITHUB_OUTPUT"
 
       - name: Env variable output
         id: test-variables
@@ -72,7 +72,7 @@ jobs:
 
       - name: Package and push helm chart
         run: |
-          helm package ./helm --version ${{ steps.set-variables.outputs.VERSION }}
+          helm package ./charts/open-atlas-search --version ${{ steps.set-variables.outputs.VERSION }}
           helm push ./open-atlas-search-${{ steps.set-variables.outputs.VERSION }}.tgz oci://${{ steps.set-variables.outputs.REPOSITORY }}/charts
 
   publish-helm-chart:
@@ -95,7 +95,7 @@ jobs:
         uses: stefanprodan/helm-gh-pages@v1.7.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          charts_dir: helm
+          charts_dir: charts
           charts_url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
           owner: ${{ github.repository_owner }}
           repository: ${{ github.event.repository.name }}
@@ -119,4 +119,4 @@ jobs:
           echo "🚀 Getting Started (OCI Registry):"
           echo "   helm install my-search oci://ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')/charts/open-atlas-search"
           echo ""
-          echo "📚 Documentation: https://github.com/${{ github.repository }}/blob/master/helm/README.md"
+          echo "📚 Documentation: https://github.com/${{ github.repository }}/blob/master/charts/open-atlas-search/README.md"
