@@ -12,13 +12,20 @@ data:
       uri: {{ .Values.config.mongodb.uri | quote }}
     search:
       index_path: {{ .Values.config.search.index_path | quote }}
+    {{- if eq .Values.deploymentMode "cluster" }}
     cluster:
-      enabled: {{ .Values.cluster.enabled }}
-      node_id: {{ .Values.cluster.nodeID | quote }}
+      enabled: true
       bind_addr: {{ .Values.cluster.bindAddr | quote }}
       raft_port: {{ .Values.cluster.raftPort }}
       raft_dir: {{ .Values.cluster.raftDir | quote }}
       bootstrap: {{ .Values.cluster.bootstrap }}
+      {{- if .Values.cluster.joinAddr }}
       join_addr:
 {{ toYaml .Values.cluster.joinAddr | indent 8 }}
+      {{- end }}
       data_dir: {{ .Values.cluster.dataDir | quote }}
+      grpc_port: {{ .Values.cluster.grpcPort }}
+    {{- else }}
+    cluster:
+      enabled: false
+    {{- end }}

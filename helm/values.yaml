@@ -1,5 +1,13 @@
 # Default values for open-atlas-search
+# Deployment mode: "standalone" or "cluster"
+deploymentMode: "standalone"
+
+# For standalone mode
 replicaCount: 3
+
+# For cluster mode
+statefulSet:
+  replicas: 3
 
 image:
   repository: open-atlas-search
@@ -81,16 +89,20 @@ config:
   search:
     index_path: "/data/indexes"
 
-# Cluster settings
+# Cluster settings (automatically enabled when deploymentMode is "cluster")
 cluster:
-  enabled: false
-  nodeID: "node-1"
-  bindAddr: "0.0.0.0:7946"
+  # Cluster ports
   raftPort: 7946
+  grpcPort: 50051
+  # Storage paths
   raftDir: "/data/raft"
-  bootstrap: false # Set to true for the first node
-  joinAddr: [] # Add existing nodes here when joining
   dataDir: "/data/cluster"
+  # Bootstrap settings (first node should have bootstrap: true)
+  bootstrap: false
+  # Join existing cluster (list of existing node addresses)
+  joinAddr: []
+  # Node configuration
+  bindAddr: "0.0.0.0:7946"
 
 # Environment variables
 env: []

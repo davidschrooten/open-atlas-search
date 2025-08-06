@@ -1,16 +1,22 @@
+{{- if eq .Values.deploymentMode "cluster" }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: open-atlas-search-headless
+  name: {{ include "open-atlas-search.fullname" . }}-headless
   labels:
-    app: open-atlas-search
+    {{- include "open-atlas-search.labels" . | nindent 4 }}
   annotations:
     service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
 spec:
   clusterIP: None
   selector:
-    app: open-atlas-search
+    {{- include "open-atlas-search.selectorLabels" . | nindent 4 }}
   ports:
-    - port: 7946 # Used for Raft and HTTP API
-    - port: 50051 # gRPC server port for communication
+    - name: raft
+      port: {{ .Values.cluster.raftPort }}
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.cluster.grpcPort }}
+      protocol: TCP
+{{- end }}
 
