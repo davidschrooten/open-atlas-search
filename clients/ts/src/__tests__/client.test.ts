@@ -1,9 +1,9 @@
-import { OpenAtlasSearchClient, OpenAtlasSearchError } from '../client';
-import { ClientConfig } from '../types';
+import { OpenAtlasSearchClient } from '../client';
+import { ClientConfig, OpenAtlasSearchError } from '../types';
 
 // Mock fetch for testing
 const mockFetch = jest.fn();
-global.fetch = mockFetch as any;
+jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
 
 describe('OpenAtlasSearchClient', () => {
   let client: OpenAtlasSearchClient;
