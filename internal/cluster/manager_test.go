@@ -136,7 +136,7 @@ func TestRaft_MultiNode_Join(t *testing.T) {
 		// but the actual joining would require the node to be running
 		nodeID := "test-node-2"
 		bindAddr := "127.0.0.1:50061"
-		
+
 		// This tests the AddNode method itself
 		err = bootstrapNode.AddNode(nodeID, bindAddr)
 		if err != nil {

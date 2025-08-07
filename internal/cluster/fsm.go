@@ -71,7 +71,7 @@ func (f *FSM) Apply(log *raft.Log) interface{} {
 				// Handle both []string and []interface{} (from JSON unmarshalling)
 				if shardListRaw, exists := shardInfo["shards"]; exists {
 					var shardList []string
-					
+
 					// Try []string first
 					if sl, ok := shardListRaw.([]string); ok {
 						shardList = sl
@@ -88,7 +88,7 @@ func (f *FSM) Apply(log *raft.Log) interface{} {
 					} else {
 						return fmt.Errorf("invalid shards type")
 					}
-					
+
 					f.indexShards[indexName] = shardList
 					return fmt.Sprintf("index %s distribution updated", indexName)
 				}
