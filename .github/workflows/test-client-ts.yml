@@ -1,16 +1,16 @@
-name: Test TypeScript Client
+name: Test Client TS
 
 on:
   push:
     branches: [master, develop]
     paths:
       - 'clients/ts/**'
-      - '.github/workflows/test-ts-client.yml'
+      - '.github/workflows/test-client-ts.yml'
   pull_request:
     branches: [master, develop]
     paths:
       - 'clients/ts/**'
-      - '.github/workflows/test-ts-client.yml'
+      - '.github/workflows/test-client-ts.yml'
 
 jobs:
   test:

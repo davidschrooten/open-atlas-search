@@ -1,4 +1,4 @@
-name: Test NestJS TypeScript Client
+name: Test Client NestJS
 
 on:
   push:
@@ -6,13 +6,13 @@ on:
     paths:
       - 'clients/ts/**'           # Base TypeScript client changes affect NestJS client
       - 'clients/ts-nestjs/**'
-      - '.github/workflows/test-ts-nestjs-client.yml'
+      - '.github/workflows/test-client-nestjs.yml'
   pull_request:
     branches: [master, develop]
     paths:
       - 'clients/ts/**'           # Base TypeScript client changes affect NestJS client
       - 'clients/ts-nestjs/**'
-      - '.github/workflows/test-ts-nestjs-client.yml'
+      - '.github/workflows/test-client-nestjs.yml'
 
 jobs:
   test:

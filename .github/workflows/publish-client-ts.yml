@@ -1,4 +1,4 @@
-name: Publish NestJS TypeScript Client to NPM
+name: Publish Client TS
 
 on:
   release:
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: clients/ts-nestjs
+        working-directory: clients/ts
     
     steps:
       - name: Checkout repository
@@ -36,17 +36,10 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-node-20-${{ hashFiles('clients/ts-nestjs/package.json') }}
+          key: ${{ runner.os }}-node-20-${{ hashFiles('clients/ts/package.json') }}
           restore-keys: |
             ${{ runner.os }}-node-20-
             ${{ runner.os }}-node-
-
-      # Build the base TypeScript client first (dependency)
-      - name: Install and build base TypeScript client
-        working-directory: clients/ts
-        run: |
-          npm install
-          npm run build
 
       - name: Install dependencies
         run: npm install
@@ -132,13 +125,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const packageInfo = require('./clients/ts-nestjs/package.json');
+            const packageInfo = require('./clients/ts/package.json');
             
             github.rest.issues.createComment({
               issue_number: context.payload.release.id,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🚀 NestJS TypeScript client package \`${packageInfo.name}@${packageInfo.version}\` has been successfully published to NPM!
+              body: `🚀 TypeScript client package \`${packageInfo.name}@${packageInfo.version}\` has been successfully published to NPM!
               
               Install it with:
               \`\`\`bash
