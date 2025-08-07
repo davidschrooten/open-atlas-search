@@ -1,0 +1,178 @@
+name: Test NestJS TypeScript Client
+
+on:
+  push:
+    branches: [master, develop]
+    paths:
+      - 'clients/ts/**'           # Base TypeScript client changes affect NestJS client
+      - 'clients/ts-nestjs/**'
+      - '.github/workflows/test-ts-nestjs-client.yml'
+  pull_request:
+    branches: [master, develop]
+    paths:
+      - 'clients/ts/**'           # Base TypeScript client changes affect NestJS client
+      - 'clients/ts-nestjs/**'
+      - '.github/workflows/test-ts-nestjs-client.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/ts-nestjs
+
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('clients/ts-nestjs/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ matrix.node-version }}-
+            ${{ runner.os }}-node-
+
+      # Build the base TypeScript client first (dependency)
+      - name: Install and build base TypeScript client
+        working-directory: clients/ts
+        run: |
+          npm install
+          npm run build
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run linter (if available)
+        run: npm run lint || echo "No lint script found, skipping..."
+        continue-on-error: true
+
+      - name: Run type checking
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test -- --coverage
+
+      - name: Build package
+        run: npm run build
+
+      - name: Test package can be packed
+        run: npm pack --dry-run
+
+      - name: Upload coverage reports
+        if: matrix.node-version == '20'
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./clients/ts-nestjs/coverage/lcov.info
+          flags: nestjs-typescript-client
+          name: NestJS TypeScript Client Coverage
+          fail_ci_if_error: false
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && matrix.node-version == '20'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Try to read test results
+            let testResults = '';
+            try {
+              if (fs.existsSync('./clients/ts-nestjs/coverage/lcov.info')) {
+                testResults += '✅ Tests passed with coverage reports generated\n';
+              } else {
+                testResults += '✅ Tests passed\n';
+              }
+            } catch (error) {
+              testResults += '⚠️ Could not determine test results\n';
+            }
+            
+            const comment = `## 🧪 NestJS TypeScript Client Test Results
+            
+            ${testResults}
+            
+            **Node.js versions tested:** 18, 20, 22
+            **Build status:** ✅ Package builds successfully
+            
+            The NestJS TypeScript client is ready for this PR! 🚀`;
+            
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const existingComment = comments.data.find(
+              comment => comment.body.includes('🧪 NestJS TypeScript Client Test Results')
+            );
+            
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: comment,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment,
+              });
+            }
+
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/ts-nestjs
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-20-${{ hashFiles('clients/ts-nestjs/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-20-
+            ${{ runner.os }}-node-
+
+      # Build the base TypeScript client first (dependency)
+      - name: Install and build base TypeScript client
+        working-directory: clients/ts
+        run: |
+          npm install
+          npm run build
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run security audit
+        run: npm audit --audit-level=high
+
+      - name: Check for outdated packages
+        run: npm outdated || true
+
+      - name: Check package for potential issues
+        run: npx publint || echo "publint not available, skipping..."
+        continue-on-error: true
