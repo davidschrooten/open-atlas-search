@@ -1,0 +1,35 @@
+{
+  "name": "@open-atlas-search/client",
+  "version": "1.0.0",
+  "description": "TypeScript client for Open Atlas Search API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "search",
+    "atlas",
+    "mongodb",
+    "typescript",
+    "client"
+  ],
+  "author": "David Schrooten",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/jest": "^29.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.0"
+  },
+  "files": [
+    "dist/"
+  ]
+}
