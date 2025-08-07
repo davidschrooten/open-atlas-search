@@ -119,15 +119,32 @@ export class OpenAtlasSearchModule {
   }
 
   /**
-   * For importing in feature modules when the root module is already configured
-   * This provides access to the service without reconfiguring the client
+   * For importing in feature modules with specific configuration.
+   * This creates a new service instance with the provided configuration.
+   * 
+   * @param options - Configuration options for this feature module
    * @returns DynamicModule
    */
-  static forFeature(): DynamicModule {
+  static forFeature(options: OpenAtlasSearchModuleOptions): DynamicModule {
+    const providers: Provider[] = [
+      {
+        provide: OPEN_ATLAS_SEARCH_MODULE_OPTIONS,
+        useValue: options,
+      },
+      {
+        provide: OPEN_ATLAS_SEARCH_CLIENT,
+        useFactory: (config: OpenAtlasSearchModuleOptions) => {
+          return new OpenAtlasSearchClient(config);
+        },
+        inject: [OPEN_ATLAS_SEARCH_MODULE_OPTIONS],
+      },
+      OpenAtlasSearchService,
+    ];
+    
     return {
       module: OpenAtlasSearchModule,
-      providers: [OpenAtlasSearchService],
-      exports: [OpenAtlasSearchService],
+      providers,
+      exports: [OpenAtlasSearchService, OPEN_ATLAS_SEARCH_CLIENT],
     };
   }
 }

@@ -357,6 +357,47 @@ To make the module available globally without importing it in every module:
 export class AppModule {}
 ```
 
+## Feature Modules
+
+If you prefer not to use the global module pattern, you can use `forFeature()` in feature modules after configuring the module at the root level:
+
+```typescript
+// app.module.ts
+@Module({
+  imports: [
+    OpenAtlasSearchModule.forRoot({
+      baseUrl: 'http://localhost:8080',
+      username: 'admin',
+      password: 'password',
+      timeout: 30000,
+      // Note: isGlobal is false or omitted
+    }),
+  ],
+})
+export class AppModule {}
+
+// feature.module.ts
+@Module({
+  imports: [OpenAtlasSearchModule.forFeature()],
+  providers: [FeatureService],
+})
+export class FeatureModule {}
+
+// feature.service.ts
+@Injectable()
+export class FeatureService {
+  constructor(
+    private readonly atlasSearch: OpenAtlasSearchService,
+  ) {}
+  
+  async search(query: string) {
+    return this.atlasSearch.simpleSearch('my-index', query);
+  }
+}
+```
+
+**Important**: `forFeature()` only works when the root module has already been configured with `forRoot()` or `forRootAsync()` in the same module tree. The client instance will be shared across all feature modules.
+
 ## License
 
 MIT License - see the [LICENSE](LICENSE) file for details.
