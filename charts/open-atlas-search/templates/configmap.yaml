@@ -14,8 +14,19 @@ data:
       {{- end }}
     mongodb:
       uri: {{ .Values.config.mongodb.uri | quote }}
+      database: {{ .Values.config.mongodb.database | quote }}
+      {{- if .Values.config.mongodb.username }}
+      username: {{ .Values.config.mongodb.username | quote }}
+      {{- end }}
+      {{- if .Values.config.mongodb.password }}
+      password: {{ .Values.config.mongodb.password | quote }}
+      {{- end }}
+      timeout: {{ .Values.config.mongodb.timeout }}
     search:
       index_path: {{ .Values.config.search.index_path | quote }}
+      batch_size: {{ .Values.config.search.batch_size }}
+      flush_interval: {{ .Values.config.search.flush_interval }}
+      sync_state_path: {{ .Values.config.search.sync_state_path | quote }}
     {{- if eq .Values.deploymentMode "cluster" }}
     cluster:
       enabled: true
@@ -32,4 +43,8 @@ data:
     {{- else }}
     cluster:
       enabled: false
+    {{- end }}
+    {{- if .Values.indexes }}
+    indexes:
+{{ toYaml .Values.indexes | indent 6 }}
     {{- end }}

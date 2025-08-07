@@ -1,13 +1,24 @@
 # Default values for open-atlas-search
+# This file contains all configuration options for the Open Atlas Search Helm chart
+# including deployment modes, authentication, clustering, and search index configuration
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
 # Deployment mode: "standalone" or "cluster"
 deploymentMode: "standalone"
 
-# For standalone mode
+# For standalone mode (using Deployment)
 replicaCount: 3
 
-# For cluster mode
+# For cluster mode (using StatefulSet)
 statefulSet:
   replicas: 3
+
+# =============================================================================
+# IMAGE CONFIGURATION
+# =============================================================================
 
 image:
   repository: davidschrooten/open-atlas-search
@@ -18,21 +29,27 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# =============================================================================
+# KUBERNETES RESOURCES
+# =============================================================================
+
 serviceAccount:
   create: true
   annotations: {}
   name: ""
 
 podAnnotations: {}
-
 podSecurityContext: {}
-
 securityContext: {}
 
 service:
   type: ClusterIP
   port: 80
   targetPort: 3000
+
+# =============================================================================
+# INGRESS CONFIGURATION
+# =============================================================================
 
 ingress:
   enabled: true
@@ -51,6 +68,10 @@ ingress:
       hosts:
         - search.example.com
 
+# =============================================================================
+# RESOURCE MANAGEMENT
+# =============================================================================
+
 resources:
   limits:
     cpu: 1000m
@@ -67,10 +88,12 @@ autoscaling:
   targetMemoryUtilizationPercentage: 80
 
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
+
+# =============================================================================
+# PERSISTENT STORAGE
+# =============================================================================
 
 # Persistent storage for search indexes
 persistence:
@@ -80,54 +103,158 @@ persistence:
   size: 10Gi
   mountPath: /data
 
-# Application configuration
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
 config:
   server:
     port: 3000
   mongodb:
     uri: "mongodb://mongodb:27017"
+    database: "production"
+    username: ""          # Optional MongoDB username
+    password: ""          # Optional MongoDB password  
+    timeout: 30           # Connection timeout in seconds
   search:
     index_path: "/data/indexes"
+    batch_size: 1000                    # Batch size for indexing operations
+    flush_interval: 30                  # How often to flush indexes (seconds)
+    sync_state_path: "/data/sync_state.json"  # Path to sync state file
 
-# Authentication configuration
+# =============================================================================
+# AUTHENTICATION CONFIGURATION
+# =============================================================================
+
 # When enabled, API endpoints will require HTTP Basic Authentication
-# Leave username and password empty to disable authentication
 authentication:
   enabled: false
-  # Username for API authentication (can be overridden by existingSecret)
-  username: ""
-  # Password for API authentication (can be overridden by existingSecret)
-  password: ""
-  # Use existing secret instead of creating a new one
-  # The secret should contain keys: username, password
-  existingSecret: ""
-  # Secret keys (used when existingSecret is specified)
+  # Direct username/password configuration (not recommended for production)
+  username: ""                    # Username for API authentication
+  password: ""                    # Password for API authentication
+  
+  # Recommended: Use existing secret instead of direct credentials
+  existingSecret: ""              # Name of existing secret containing credentials
   secretKeys:
-    username: "username"
-    password: "password"
+    username: "username"          # Key name for username in the secret
+    password: "password"          # Key name for password in the secret
+
+# Example authentication configurations:
+#
+# Option 1: Direct credentials (for development/testing)
+# authentication:
+#   enabled: true
+#   username: "admin"
+#   password: "secret123"
+#
+# Option 2: Using existing secret (recommended for production)
+# authentication:
+#   enabled: true
+#   existingSecret: "my-auth-secret"
+#   secretKeys:
+#     username: "username"
+#     password: "password"
+
+# =============================================================================
+# CLUSTER CONFIGURATION
+# =============================================================================
 
 # Cluster settings (automatically enabled when deploymentMode is "cluster")
 cluster:
   # Cluster ports
-  raftPort: 7946
-  grpcPort: 50051
+  raftPort: 7946              # Raft consensus protocol port
+  grpcPort: 50051             # gRPC communication port
   # Storage paths
-  raftDir: "/data/raft"
-  dataDir: "/data/cluster"
+  raftDir: "/data/raft"        # Raft data directory
+  dataDir: "/data/cluster"     # Cluster data directory  
   # Bootstrap settings (first node should have bootstrap: true)
-  bootstrap: false
+  bootstrap: false            # Set to true only for the first node
   # Join existing cluster (list of existing node addresses)
-  joinAddr: []
+  joinAddr: []                # Add existing cluster node addresses here
   # Node configuration
-  bindAddr: "0.0.0.0:7946"
+  bindAddr: "0.0.0.0:7946"    # Address to bind cluster communication
 
-# Environment variables
+# =============================================================================
+# SEARCH INDEXES CONFIGURATION
+# =============================================================================
+
+# Define the search indexes that should be created and maintained
+# Leave empty ([]) to disable index creation
+indexes: []
+
+# Example index configurations:
+# indexes:
+#   - name: "tags"                        # Index name
+#     database: "production"              # Source database
+#     collection: "tags"                  # Source collection
+#     distribution:
+#       replicas: 1                       # Number of replicas
+#       shards: 1                         # Number of shards
+#     definition:
+#       mappings:
+#         dynamic: true                   # Allow dynamic field mapping
+#         fields:
+#           - name: "tag_name_search"     # Field name in index
+#             field: "tag_name"           # Source field from MongoDB
+#             type: "text"                # Field type: text, keyword, numeric, date
+#             analyzer: "standard"        # Text analyzer (for text fields)
+#           - name: "tag_name_keyword"
+#             field: "tag_name"
+#             type: "keyword"
+#           - name: "source"
+#             field: "source"
+#             type: "keyword"
+#             facet: true                 # Enable faceted search
+#           - name: "created_at"
+#             field: "created_at"
+#             type: "date"
+#           - name: "user_count"
+#             field: "user_count"
+#             type: "numeric"
+#             facet: true
+#
+#   - name: "products"                    # Second index example
+#     database: "production"
+#     collection: "products"
+#     distribution:
+#       replicas: 1
+#       shards: 2                         # Multiple shards for larger datasets
+#     definition:
+#       mappings:
+#         dynamic: false                  # Strict field mapping
+#         fields:
+#           - name: "title"
+#             field: "title"
+#             type: "text"
+#             analyzer: "standard"
+#           - name: "description"
+#             field: "description"
+#             type: "text"
+#             analyzer: "standard"
+#           - name: "category"
+#             field: "category"
+#             type: "keyword"
+#             facet: true
+#           - name: "price"
+#             field: "price"
+#             type: "numeric"
+#             facet: true
+
+# =============================================================================
+# ENVIRONMENT VARIABLES
+# =============================================================================
+
+# Custom environment variables
 env: []
+  # Examples:
   # - name: LOG_LEVEL
   #   value: "info"
+  # - name: CUSTOM_SETTING
+  #   value: "value"
 
 # Additional environment variables from secrets/configmaps
 envFrom: []
+  # Examples:
   # - configMapRef:
   #     name: special-config
   # - secretRef:

@@ -40,7 +40,7 @@ spec:
               protocol: TCP
           env:
             - name: CONFIG_PATH
-              value: "/etc/config/config.yaml"
+              value: "/app/config/config.yaml"
             {{- if .Values.authentication.enabled }}
             - name: OAS_SERVER_USERNAME
               valueFrom:
@@ -77,7 +77,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: config
-              mountPath: /etc/config
+              mountPath: /app/config
               readOnly: true
             {{- if .Values.persistence.enabled }}
             - name: index-storage

@@ -45,7 +45,7 @@ spec:
               protocol: TCP
           env:
             - name: CONFIG_PATH
-              value: "/etc/config/config.yaml"
+              value: "/app/config/config.yaml"
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -92,7 +92,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: config
-              mountPath: /etc/config
+              mountPath: /app/config
               readOnly: true
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
