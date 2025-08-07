@@ -1,7 +1,7 @@
 # Open Atlas Search
 
-[![Build and Publish Docker Image](https://github.com/davidschrooten/open-atlas-search/actions/workflows/docker.yml/badge.svg)](https://github.com/davidschrooten/open-atlas-search/actions/workflows/docker.yml)
-[![Test](https://github.com/davidschrooten/open-atlas-search/actions/workflows/test.yml/badge.svg)](https://github.com/davidschrooten/open-atlas-search/actions/workflows/test.yml)
+[![Build and Publish Docker Image](https://github.com/davidschrooten/open-atlas-search/actions/workflows/publish-docker.yml/badge.svg)](https://github.com/davidschrooten/open-atlas-search/actions/workflows/publish-docker.yml)
+[![Test](https://github.com/davidschrooten/open-atlas-search/actions/workflows/test-go.yml/badge.svg)](https://github.com/davidschrooten/open-atlas-search/actions/workflows/test-go.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/davidschrooten/open-atlas-search)](https://goreportcard.com/report/github.com/davidschrooten/open-atlas-search)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
