@@ -7,6 +7,12 @@
 
 A replacement for MongoDB Atlas Search functionality built in Go. Provides full-text search, faceted search, and real-time indexing capabilities for self-managed MongoDB deployments.
 
+## 🚀 Quick Start
+
+**📦 [Install with Helm Charts →](https://davidschrooten.github.io/open-atlas-search/)**
+
+Visit our **[Helm Chart Repository](https://davidschrooten.github.io/open-atlas-search/)** for the easiest installation experience with comprehensive configuration options, deployment modes, and getting started guides.
+
 **Key Benefits:**
 - No MongoDB change streams required - uses timestamp-based polling
 - Atlas Search compatible functionality-wise
