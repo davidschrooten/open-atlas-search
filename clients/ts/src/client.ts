@@ -102,7 +102,8 @@ export class OpenAtlasSearchClient {
         throw error;
       }
       
-      if (error.name === 'AbortError') {
+      // Type guard for error with name property (AbortError)
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
         throw new OpenAtlasSearchError(
           `Request timeout after ${this.timeout}ms`,
           {
@@ -114,11 +115,16 @@ export class OpenAtlasSearchClient {
         );
       }
 
+      // Type guard for error with message property
+      const errorMessage = error && typeof error === 'object' && 'message' in error 
+        ? String(error.message) 
+        : 'Unknown error occurred';
+
       throw new OpenAtlasSearchError(
-        error.message || 'Unknown error occurred',
+        errorMessage,
         {
           error: 'network_error',
-          message: error.message || 'Unknown error occurred',
+          message: errorMessage,
           code: 0,
         },
         0
