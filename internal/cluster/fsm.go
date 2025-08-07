@@ -68,7 +68,27 @@ func (f *FSM) Apply(log *raft.Log) interface{} {
 		// Handle index distribution changes
 		if shardInfo, ok := cmd.Data.(map[string]interface{}); ok {
 			if indexName, exists := shardInfo["index_name"].(string); exists {
-				if shardList, exists := shardInfo["shards"].([]string); exists {
+				// Handle both []string and []interface{} (from JSON unmarshalling)
+				if shardListRaw, exists := shardInfo["shards"]; exists {
+					var shardList []string
+					
+					// Try []string first
+					if sl, ok := shardListRaw.([]string); ok {
+						shardList = sl
+					} else if sl, ok := shardListRaw.([]interface{}); ok {
+						// Convert []interface{} to []string
+						shardList = make([]string, len(sl))
+						for i, v := range sl {
+							if s, ok := v.(string); ok {
+								shardList[i] = s
+							} else {
+								return fmt.Errorf("invalid shard ID type")
+							}
+						}
+					} else {
+						return fmt.Errorf("invalid shards type")
+					}
+					
 					f.indexShards[indexName] = shardList
 					return fmt.Sprintf("index %s distribution updated", indexName)
 				}
