@@ -32,7 +32,7 @@
     "reflect-metadata": "^0.1.13"
   },
   "dependencies": {
-    "oas-ts-client": "file:../ts"
+    "oas-ts-client": "^1.0.2"
   },
   "devDependencies": {
     "@nestjs/common": "^10.0.0",
