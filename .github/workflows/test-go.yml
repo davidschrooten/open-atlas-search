@@ -67,8 +67,17 @@ jobs:
     - name: Run golint
       run: golint ./...
 
-    - name: Run tests
-      run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+    - name: Run tests (with race detector)
+      run: go test -race -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v '/internal/cluster')
+      
+    - name: Run cluster tests (without race detector due to BoltDB compatibility)
+      run: go test -coverprofile=coverage-cluster.out -covermode=atomic ./internal/cluster
+      
+    - name: Merge coverage reports
+      run: |
+        go install github.com/wadey/gocovmerge@latest
+        $(go env GOPATH)/bin/gocovmerge coverage.out coverage-cluster.out > coverage-merged.out
+        mv coverage-merged.out coverage.out
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
