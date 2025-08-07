@@ -1,9 +1,25 @@
 import { OpenAtlasSearchClient } from '../client';
 import { ClientConfig, OpenAtlasSearchError } from '../types';
 
-// Mock fetch for testing
-const mockFetch = jest.fn();
-jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
+// Mock node-fetch
+jest.mock('node-fetch');
+const fetch = require('node-fetch');
+const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
+
+// Helper to create mock Response objects
+const createMockResponse = (data: any, options: { ok?: boolean; status?: number; headers?: any } = {}) => {
+  const response = {
+    ok: options.ok ?? true,
+    status: options.status ?? 200,
+    statusText: options.status === 404 ? 'Not Found' : 'OK',
+    headers: {
+      get: jest.fn().mockReturnValue(options.headers?.get?.() ?? 'application/json'),
+    },
+    json: jest.fn().mockResolvedValue(data),
+    text: jest.fn().mockResolvedValue(typeof data === 'string' ? data : JSON.stringify(data)),
+  };
+  return response;
+};
 
 describe('OpenAtlasSearchClient', () => {
   let client: OpenAtlasSearchClient;
@@ -44,12 +60,7 @@ describe('OpenAtlasSearchClient', () => {
     it('should make GET request to /health endpoint', async () => {
       const expectedResponse = { status: 'healthy', service: 'open-atlas-search' };
       
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: { get: () => 'application/json' },
-        json: async () => expectedResponse,
-      });
+      mockFetch.mockResolvedValueOnce(createMockResponse(expectedResponse));
 
       const result = await client.health();
       
@@ -103,12 +114,7 @@ describe('OpenAtlasSearchClient', () => {
         maxScore: 0,
       };
       
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: { get: () => 'application/json' },
-        json: async () => expectedResponse,
-      });
+      mockFetch.mockResolvedValueOnce(createMockResponse(expectedResponse));
 
       const searchRequest = { query: { match_all: {} }, size: 10 };
       const result = await client.search('test-index', searchRequest);
@@ -128,12 +134,7 @@ describe('OpenAtlasSearchClient', () => {
     it('should create proper match query', async () => {
       const expectedResponse = { hits: [], total: 0, maxScore: 0 };
       
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: { get: () => 'application/json' },
-        json: async () => expectedResponse,
-      });
+      mockFetch.mockResolvedValueOnce(createMockResponse(expectedResponse));
 
       await client.simpleSearch('test-index', 'search text');
       
@@ -161,12 +162,7 @@ describe('OpenAtlasSearchClient', () => {
         code: 404,
       };
 
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        headers: { get: () => 'application/json' },
-        json: async () => errorResponse,
-      });
+      mockFetch.mockResolvedValueOnce(createMockResponse(errorResponse, { ok: false, status: 404 }));
 
       await expect(client.health()).rejects.toThrow(OpenAtlasSearchError);
     });
