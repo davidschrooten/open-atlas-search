@@ -1,5 +1,5 @@
 {
-  description = "open-atlas-search nixos flake";
+  description = "open-atlas-search golang nixos flake";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/master";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
@@ -14,9 +14,8 @@
         nativeBuildInputs = [ pkgs.bashInteractive ];
         buildInputs = with pkgs; [
           go
-          opentofu
-          gnupg
-          sops
+          nodejs_22
+          yarn
         ];
         shellHook = with pkgs; ''
           # fixes libstdc++ issues and libgl.so issues
