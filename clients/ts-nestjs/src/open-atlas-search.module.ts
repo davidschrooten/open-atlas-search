@@ -117,4 +117,17 @@ export class OpenAtlasSearchModule {
       'Invalid OpenAtlasSearchModuleAsyncOptions: must provide useFactory, useClass, or useExisting',
     );
   }
+
+  /**
+   * For importing in feature modules when the root module is already configured
+   * This provides access to the service without reconfiguring the client
+   * @returns DynamicModule
+   */
+  static forFeature(): DynamicModule {
+    return {
+      module: OpenAtlasSearchModule,
+      providers: [OpenAtlasSearchService],
+      exports: [OpenAtlasSearchService],
+    };
+  }
 }
