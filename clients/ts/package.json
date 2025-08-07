@@ -1,5 +1,5 @@
 {
-  "name": "oas-client",
+  "name": "oas-ts-client",
   "version": "1.0.0",
   "description": "TypeScript client for Open Atlas Search API",
   "main": "dist/index.js",
