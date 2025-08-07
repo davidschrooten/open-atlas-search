@@ -130,6 +130,15 @@ func LoadConfig(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
+	// Override server credentials from environment variables if they exist
+	// This ensures environment variables take precedence over config file values
+	if envUsername := viper.GetString("server.username"); envUsername != "" {
+		config.Server.Username = envUsername
+	}
+	if envPassword := viper.GetString("server.password"); envPassword != "" {
+		config.Server.Password = envPassword
+	}
+
 	return &config, nil
 }
 
