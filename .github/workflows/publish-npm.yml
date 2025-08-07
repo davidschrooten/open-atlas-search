@@ -1,0 +1,178 @@
+name: Publish TypeScript Client to NPM
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0, 1.0.0-beta.1)'
+        required: true
+        type: string
+      tag:
+        description: 'NPM tag (latest, beta, alpha, etc.)'
+        required: false
+        default: 'latest'
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/ts
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: clients/ts/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run lint (if available)
+        run: npm run lint || echo "No lint script found, skipping..."
+        continue-on-error: true
+
+      - name: Build package
+        run: npm run build
+
+      - name: Update version (manual workflow)
+        if: github.event_name == 'workflow_dispatch'
+        run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
+
+      - name: Update version (release)
+        if: github.event_name == 'release'
+        run: |
+          # Extract version from release tag (remove 'v' prefix if present)
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+          npm version "$VERSION" --no-git-tag-version
+
+      - name: Verify package contents
+        run: |
+          echo "Package contents:"
+          npm pack --dry-run
+          
+          echo "Package.json version:"
+          node -p "require('./package.json').version"
+          
+          echo "Built files:"
+          ls -la dist/
+
+      - name: Check if version exists on NPM
+        id: check-version
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          
+          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Version $PACKAGE_VERSION already exists on NPM"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Version $PACKAGE_VERSION does not exist on NPM"
+          fi
+
+      - name: Publish to NPM (latest tag)
+        if: steps.check-version.outputs.exists == 'false' && (github.event_name == 'release' && !github.event.release.prerelease)
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to NPM (prerelease tag)
+        if: steps.check-version.outputs.exists == 'false' && (github.event_name == 'release' && github.event.release.prerelease)
+        run: npm publish --access public --tag beta
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to NPM (manual workflow)
+        if: steps.check-version.outputs.exists == 'false' && github.event_name == 'workflow_dispatch'
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [[ "$TAG" == "" ]]; then
+            TAG="latest"
+          fi
+          npm publish --access public --tag "$TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Skip publishing (version exists)
+        if: steps.check-version.outputs.exists == 'true'
+        run: |
+          echo "⚠️ Version already exists on NPM. Skipping publish."
+          exit 0
+
+      - name: Create GitHub deployment
+        if: steps.check-version.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const packageInfo = require('./clients/ts/package.json');
+            
+            github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'npm',
+              description: `Published ${packageInfo.name}@${packageInfo.version} to NPM`,
+              auto_merge: false,
+              required_contexts: []
+            });
+
+      - name: Comment on release (if applicable)
+        if: github.event_name == 'release' && steps.check-version.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const packageInfo = require('./clients/ts/package.json');
+            
+            github.rest.issues.createComment({
+              issue_number: context.payload.release.id,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 TypeScript client package \`${packageInfo.name}@${packageInfo.version}\` has been successfully published to NPM!
+              
+              Install it with:
+              \`\`\`bash
+              npm install ${packageInfo.name}
+              \`\`\`
+              
+              [View on NPM](https://www.npmjs.com/package/${packageInfo.name})`
+            });
+
+      - name: Summary
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          
+          echo "## 📦 NPM Package Publication" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** \`$PACKAGE_NAME\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`$PACKAGE_VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** $( [[ "${{ steps.check-version.outputs.exists }}" == "false" ]] && echo "✅ Published" || echo "⚠️ Skipped (version exists)" )" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ steps.check-version.outputs.exists }}" == "false" ]]; then
+            echo "### 🎉 Successfully Published!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Install the package:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+            echo "npm install $PACKAGE_NAME" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "[📋 View on NPM](https://www.npmjs.com/package/$PACKAGE_NAME)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ℹ️ Version Already Exists" >> $GITHUB_STEP_SUMMARY
+            echo "This version was already published to NPM. Publication was skipped." >> $GITHUB_STEP_SUMMARY
+          fi

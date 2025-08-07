@@ -8,7 +8,12 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "jest",
-    "prepublishOnly": "npm run build"
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "clean": "rm -rf dist coverage",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run clean && npm run typecheck && npm run test && npm run build",
+    "prepack": "npm run build"
   },
   "keywords": [
     "search",
